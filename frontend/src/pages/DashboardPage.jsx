@@ -7,8 +7,9 @@ import {
   ArrowRight, Activity
 } from 'lucide-react'
 import {
-  Card, CardContent, CardHeader, CardTitle
+  Card, CardContent, CardHeader, CardTitle, CardDescription
 } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
@@ -39,14 +40,14 @@ ChartJS.register(
 function KpiCard({ label, value, prefix = '', suffix = '', icon: Icon, variant = 'default', loading }) {
   const colorMap = {
     default:     'text-foreground',
-    danger:      'text-red-400',
-    warning:     'text-amber-400',
-    success:     'text-green-400',
+    danger:      'text-destructive',
+    warning:     'text-amber-500',
+    success:     'text-green-500',
     primary:     'text-primary',
   }
   const bgMap = {
     default:     'bg-muted/30 shadow-none',
-    danger:      'bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.15)]',
+    danger:      'bg-destructive/10 shadow-[0_0_15px_rgba(239,68,68,0.15)]',
     warning:     'bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]',
     success:     'bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.15)]',
     primary:     'bg-primary/10 shadow-[0_0_15px_rgba(59,130,246,0.15)]',
@@ -66,12 +67,12 @@ function KpiCard({ label, value, prefix = '', suffix = '', icon: Icon, variant =
   return (
     <Card className="bg-card border-border hover:border-muted-foreground/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg relative overflow-hidden group">
       {/* Subtle background glow effect on hover */}
-      <div className={cn("absolute -right-4 -top-4 size-24 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500", variant === 'danger' ? 'bg-red-500/10' : variant === 'success' ? 'bg-green-500/10' : 'bg-primary/10')} />
+      <div className={cn("absolute -right-4 -top-4 size-24 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500", bgMap[variant].split(' ')[0])} />
       
       <CardContent className="p-6 relative z-10">
         <div className="flex items-start justify-between mb-4">
           <p className="kpi-label font-semibold">{label}</p>
-          <div className={cn('flex size-10 items-center justify-center rounded-lg transition-colors', bgMap[variant])}>
+          <div className={cn('flex size-10 items-center justify-center rounded-lg transition-colors', bgMap[variant].split(' ')[0])}>
             <Icon className={cn('size-5', colorMap[variant])} />
           </div>
         </div>
@@ -252,12 +253,12 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
+    <div className="flex flex-col gap-6 p-4 md:p-6 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Reconciliation Overview</h1>
-          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold text-foreground">Reconciliation Overview</h1>
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
             {loading ? 'Loading session details...' : (
               <>
                 <Activity className="size-3.5" />
@@ -320,7 +321,7 @@ export default function DashboardPage() {
             <CardTitle className="text-base font-bold">Risk by Discrepancy Type</CardTitle>
             {latestSession && summary?.total_discrepancies > 0 && (
               <button
-                onClick={() => navigate(`/discrepancies/${latestSession.id}`)}
+                onClick={() => navigate(`/runs`)}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors bg-primary/10 px-3 py-1.5 rounded-full"
               >
                 View Details <ArrowRight className="size-3" />
@@ -329,7 +330,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="flex-1 min-h-[300px]">
             {loading ? (
-              <div className="space-y-4 h-full flex flex-col justify-end">
+              <div className="flex flex-col gap-4 h-full justify-end">
                 <Skeleton className="h-4/5 w-full rounded-t-md" />
               </div>
             ) : typeBreakdown.length === 0 ? (

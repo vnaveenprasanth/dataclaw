@@ -6,13 +6,15 @@ import {
   AlertTriangle,
   Activity,
   HelpCircle,
-  Plus
+  Plus,
+  List
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/upload',    icon: Upload,           label: 'Upload Data' },
+  { to: '/runs',      icon: List,            label: 'Runs' },
+  { to: '/upload',    icon: Upload,          label: 'Upload Data' },
 ]
 
 function SidebarLink({ to, icon: Icon, label }) {

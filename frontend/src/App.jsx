@@ -3,6 +3,7 @@ import { useAuth } from '@clerk/react'
 import { SignIn, SignUp } from '@clerk/react'
 import AppLayout from '@/components/layout/AppLayout'
 import DashboardPage from '@/pages/DashboardPage'
+import RunsPage from '@/pages/RunsPage'
 import UploadPage from '@/pages/UploadPage'
 import DiscrepanciesPage from '@/pages/DiscrepanciesPage'
 
@@ -60,6 +61,7 @@ export default function App() {
         >
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/runs" element={<RunsPage />} />
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/discrepancies/:sessionId" element={<DiscrepanciesPage />} />
         </Route>
