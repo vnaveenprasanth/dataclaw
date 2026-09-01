@@ -450,29 +450,6 @@ export default function DashboardPage() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Severity Pie Chart */}
-        <Card className="bg-card border-border lg:col-span-1 flex flex-col shadow-sm hover:shadow-md transition-shadow">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-bold">Severity Distribution</CardTitle>
-          </CardHeader>
-          <CardContent className="flex-1 flex flex-col justify-center min-h-[300px]">
-            {loading ? (
-              <div className="flex items-center justify-center h-full">
-                <Skeleton className="size-48 rounded-full" />
-              </div>
-            ) : summary?.total_discrepancies === 0 ? (
-              <div className="text-center text-muted-foreground text-sm flex flex-col items-center">
-                <CheckCircle2 className="size-8 text-green-400 mb-2 opacity-50" />
-                No discrepancies found
-              </div>
-            ) : (
-              <div className="relative h-64 w-full">
-                <Pie data={pieData} options={pieOptions} />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         {/* Discrepancy Types Bar Chart */}
         <Card className="bg-card border-border lg:col-span-2 flex flex-col shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -499,6 +476,29 @@ export default function DashboardPage() {
             ) : (
               <div className="relative h-[280px] w-full mt-4">
                 <Bar data={barData} options={barOptions} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Severity Pie Chart */}
+        <Card className="bg-card border-border lg:col-span-1 flex flex-col shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-bold">Severity Distribution</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col justify-center min-h-[300px]">
+            {loading ? (
+              <div className="flex items-center justify-center h-full">
+                <Skeleton className="size-48 rounded-full" />
+              </div>
+            ) : summary?.total_discrepancies === 0 ? (
+              <div className="text-center text-muted-foreground text-sm flex flex-col items-center">
+                <CheckCircle2 className="size-8 text-green-400 mb-2 opacity-50" />
+                No discrepancies found
+              </div>
+            ) : (
+              <div className="relative h-64 w-full">
+                <Pie data={pieData} options={pieOptions} />
               </div>
             )}
           </CardContent>

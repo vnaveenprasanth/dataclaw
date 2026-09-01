@@ -31,6 +31,12 @@ const PAGE_TITLES = {
   '/upload': 'Upload Data',
 }
 
+const PAGE_ICONS = {
+  '/dashboard': LayoutDashboard,
+  '/runs': List,
+  '/upload': Upload,
+}
+
 const INFO_SECTIONS = [
   {
     icon: FileSpreadsheet,
@@ -166,6 +172,7 @@ export default function AppLayout() {
   const [infoOpen, setInfoOpen] = useState(false)
 
   const pageTitle = PAGE_TITLES[location.pathname] || 'DATAClaw'
+  const PageIcon = PAGE_ICONS[location.pathname] || Activity
 
   return (
     <>
@@ -203,7 +210,7 @@ export default function AppLayout() {
               />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-foreground truncate">
-                  {user?.firstName || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'Account'}
+                  {user?.username || user?.firstName || 'Account'}
                 </p>
                 <p className="text-[10px] text-muted-foreground truncate">
                   {user?.emailAddresses?.[0]?.emailAddress || ''}
@@ -217,10 +224,13 @@ export default function AppLayout() {
         <main className="flex flex-1 flex-col overflow-hidden relative">
           {/* Top Navbar */}
           <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/50 backdrop-blur-sm px-6 sticky top-0 z-10">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-foreground">{pageTitle}</h2>
+            <div className="flex items-center gap-3">
+              <div className="flex size-7 items-center justify-center rounded bg-primary/10">
+                <PageIcon className="size-3.5 text-primary" />
+              </div>
+              <h2 className="text-lg font-bold tracking-tight text-foreground">{pageTitle}</h2>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('/upload')}
                 className="inline-flex items-center gap-1.5 h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-all shadow-sm hover:shadow-md cursor-pointer"
@@ -231,7 +241,7 @@ export default function AppLayout() {
               <button
                 onClick={() => setInfoOpen(true)}
                 title="Help & Features"
-                className="inline-flex items-center justify-center size-8 rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
+                className="inline-flex items-center justify-center size-8 rounded-md border-2 border-primary/30 bg-primary/10 text-primary hover:border-primary/60 hover:bg-primary/20 transition-all shadow-sm cursor-pointer"
               >
                 <HelpCircle className="size-4" />
               </button>

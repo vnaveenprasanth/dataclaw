@@ -119,6 +119,25 @@ function RunAiSummary({ sessionId }) {
   const sevColor = sev === 'HIGH' ? 'text-destructive' : sev === 'MEDIUM' ? 'text-amber-500' : 'text-green-500'
   const sevBg   = sev === 'HIGH' ? 'bg-destructive/10 border-destructive/30' : sev === 'MEDIUM' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-green-500/10 border-green-500/30'
 
+  if (!summary && !summaryMutation.isPending && !summaryMutation.isError) {
+    return (
+      <div className="flex items-center justify-between p-3 mb-4 rounded-md border border-primary/20 bg-primary/5">
+        <div className="flex items-center gap-2">
+          <Sparkles className="size-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">AI Executive Summary</span>
+          <span className="text-xs text-muted-foreground hidden sm:inline-block">— Gemini-powered root cause analysis</span>
+        </div>
+        <Button
+          onClick={() => summaryMutation.mutate()}
+          size="sm"
+          className="h-8 cursor-pointer"
+        >
+          <Sparkles className="mr-2 size-3.5" />Generate
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <Card className="border-border shadow-sm mb-4">
       <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border py-4">
@@ -136,21 +155,6 @@ function RunAiSummary({ sessionId }) {
             <CardDescription className="text-xs">On-demand analysis of all discrepancies</CardDescription>
           </div>
         </div>
-        {!summary && (
-          <Button
-            onClick={() => summaryMutation.mutate()}
-            disabled={summaryMutation.isPending}
-            size="sm"
-            variant="outline"
-            className="shrink-0"
-          >
-            {summaryMutation.isPending ? (
-              <><Loader2 className="mr-2 size-3.5 animate-spin" />Analyzing…</>
-            ) : (
-              <><Sparkles className="mr-2 size-3.5" />Generate</>
-            )}
-          </Button>
-        )}
       </CardHeader>
 
       {(summaryMutation.isPending || summary || summaryMutation.isError) && (
@@ -246,28 +250,22 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
     <div className="flex-1 overflow-y-auto flex flex-col">
       {/* Hero Banner */}
       <div className={cn("px-6 py-5 border-b flex items-center justify-between gap-4", sevBanner)}>
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="size-5" />
-            <SheetTitle className="text-xl font-bold text-foreground">
-              {TYPE_LABELS[row.discrepancy_type] || row.discrepancy_type}
-            </SheetTitle>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-5" />
+              <SheetTitle className="text-xl font-bold text-foreground">
+                {TYPE_LABELS[row.discrepancy_type] || row.discrepancy_type}
+              </SheetTitle>
+              <Badge variant="outline" className={cn("font-bold border text-xs px-2.5 py-0.5 ml-1", sevBanner)}>
+                {sevLabel}
+              </Badge>
+            </div>
           </div>
           <SheetDescription className="text-sm text-muted-foreground mt-0">
             {row.order_id && <span className="font-mono mr-3">Order: {row.order_id}</span>}
             {row.transaction_ref && <span className="font-mono">Txn: {row.transaction_ref}</span>}
           </SheetDescription>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Badge variant="outline" className={cn("font-bold border text-sm px-3 py-1", sevBanner)}>
-            {sevLabel}
-          </Badge>
-          <div className="text-right">
-            <p className="text-xs text-muted-foreground">Risk Amount</p>
-            <p className="text-2xl font-extrabold text-foreground tabular-nums">
-              ${(row.risk_amount || 0).toFixed(2)}
-            </p>
-          </div>
         </div>
       </div>
 
@@ -534,7 +532,7 @@ export default function RunsPage() {
           <CardDescription>View your past upload sessions and access their detailed discrepancy reports.</CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-0">
-          <div className="rounded-md border-2 border-border/60 overflow-hidden shadow-sm">
+          <div className="rounded-md border-2 border-foreground/20 overflow-hidden shadow-sm">
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
@@ -615,7 +613,7 @@ export default function RunsPage() {
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 w-full">
               <div className="flex flex-col gap-1 shrink-0">
                 <CardTitle className="text-2xl font-bold tracking-normal flex items-center gap-2">
-                  <List className="size-6 text-primary" />
+                  <AlertTriangle className="size-6 text-primary" />
                   Discrepancies for Run #{activeSessionId}
                 </CardTitle>
                 <CardDescription>Detailed breakdown of mismatches and data quality issues.</CardDescription>
@@ -695,7 +693,7 @@ export default function RunsPage() {
             {/* Per-run AI Summary */}
             <RunAiSummary sessionId={activeSessionId} />
 
-            <div className="rounded-md border-2 border-border/60 overflow-hidden shadow-sm">
+            <div className="rounded-md border-2 border-foreground/20 overflow-hidden shadow-sm">
               <Table>
                 <TableHeader className="bg-muted/40">
                   <TableRow>
