@@ -39,69 +39,58 @@ ChartJS.register(
   ArcElement
 )
 
-// KPI card with framer-motion and polished hover effects
+// KPI card — compact, icon inline with label
 function KpiCard({ label, value, prefix = '', suffix = '', icon: Icon, variant = 'default', loading, subtext }) {
   const colorMap = {
-    default:     'text-foreground',
-    danger:      'text-destructive',
-    warning:     'text-amber-500',
-    success:     'text-green-500',
-    primary:     'text-primary',
-    purple:      'text-violet-400',
-  }
-  const bgMap = {
-    default:     'bg-muted/30',
-    danger:      'bg-destructive/10 shadow-[0_0_15px_rgba(239,68,68,0.15)]',
-    warning:     'bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]',
-    success:     'bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.15)]',
-    primary:     'bg-primary/10 shadow-[0_0_15px_rgba(59,130,246,0.15)]',
-    purple:      'bg-violet-500/10 shadow-[0_0_15px_rgba(139,92,246,0.15)]',
+    default:  'text-foreground',
+    danger:   'text-destructive',
+    warning:  'text-amber-500',
+    success:  'text-green-500',
+    primary:  'text-primary',
+    purple:   'text-violet-400',
   }
   const iconBgMap = {
-    default:     'bg-muted/50',
-    danger:      'bg-destructive/15',
-    warning:     'bg-amber-500/15',
-    success:     'bg-green-500/15',
-    primary:     'bg-primary/15',
-    purple:      'bg-violet-500/15',
+    default:  'bg-muted/60',
+    danger:   'bg-destructive/15',
+    warning:  'bg-amber-500/15',
+    success:  'bg-green-500/15',
+    primary:  'bg-primary/15',
+    purple:   'bg-violet-500/15',
   }
 
   if (loading) {
     return (
       <Card className="bg-card border-border">
-        <CardContent className="p-6">
-          <Skeleton className="h-4 w-24 mb-3" />
-          <Skeleton className="h-8 w-20" />
+        <CardContent className="p-4">
+          <Skeleton className="h-3.5 w-24 mb-2" />
+          <Skeleton className="h-7 w-20" />
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <Card className={cn(
-      "bg-card border-border hover:border-muted-foreground/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg relative overflow-hidden group",
-      bgMap[variant].split(' ').slice(1).join(' ')
-    )}>
-      {/* Subtle background glow on hover */}
-      <div className={cn("absolute -right-4 -top-4 size-24 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500", iconBgMap[variant])} />
-      
-      <CardContent className="p-6 relative z-10">
-        <div className="flex items-start justify-between mb-4">
-          <p className="text-sm font-semibold text-muted-foreground">{label}</p>
-          <div className={cn('flex size-10 items-center justify-center rounded-lg', iconBgMap[variant])}>
-            <Icon className={cn('size-5', colorMap[variant])} />
+    <Card className="bg-card border-border hover:border-muted-foreground/30 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md relative overflow-hidden group">
+      <div className={cn("absolute -right-3 -top-3 size-16 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500", iconBgMap[variant])} />
+      <CardContent className="p-4 relative z-10">
+        {/* Label row with icon */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className={cn('flex size-7 items-center justify-center rounded-md shrink-0', iconBgMap[variant])}>
+            <Icon className={cn('size-3.5', colorMap[variant])} />
           </div>
+          <p className="text-sm font-bold text-foreground leading-tight">{label}</p>
         </div>
+        {/* Value */}
         <motion.p
-          className={cn('text-3xl font-extrabold tracking-tight tabular-nums', colorMap[variant])}
-          initial={{ opacity: 0, y: 10 }}
+          className={cn('text-2xl font-extrabold tracking-tight tabular-nums', colorMap[variant])}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
         >
           {prefix}{typeof value === 'number' ? value.toLocaleString() : (value ?? '—')}{suffix}
         </motion.p>
         {subtext && (
-          <p className="text-xs text-muted-foreground mt-1.5">{subtext}</p>
+          <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{subtext}</p>
         )}
       </CardContent>
     </Card>
