@@ -1,16 +1,19 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '@/lib/api'
 import { motion } from 'framer-motion'
 import {
   AlertTriangle, CheckCircle2, DollarSign, FileText,
-  ArrowRight, Activity
+  ArrowRight, Activity, Scale, ShieldAlert, Sparkles, Loader2,
+  TrendingDown, ListChecks, Zap
 } from 'lucide-react'
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 // Chart.js imports
@@ -37,20 +40,30 @@ ChartJS.register(
 )
 
 // KPI card with framer-motion and polished hover effects
-function KpiCard({ label, value, prefix = '', suffix = '', icon: Icon, variant = 'default', loading }) {
+function KpiCard({ label, value, prefix = '', suffix = '', icon: Icon, variant = 'default', loading, subtext }) {
   const colorMap = {
     default:     'text-foreground',
     danger:      'text-destructive',
     warning:     'text-amber-500',
     success:     'text-green-500',
     primary:     'text-primary',
+    purple:      'text-violet-400',
   }
   const bgMap = {
-    default:     'bg-muted/30 shadow-none',
+    default:     'bg-muted/30',
     danger:      'bg-destructive/10 shadow-[0_0_15px_rgba(239,68,68,0.15)]',
     warning:     'bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]',
     success:     'bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.15)]',
     primary:     'bg-primary/10 shadow-[0_0_15px_rgba(59,130,246,0.15)]',
+    purple:      'bg-violet-500/10 shadow-[0_0_15px_rgba(139,92,246,0.15)]',
+  }
+  const iconBgMap = {
+    default:     'bg-muted/50',
+    danger:      'bg-destructive/15',
+    warning:     'bg-amber-500/15',
+    success:     'bg-green-500/15',
+    primary:     'bg-primary/15',
+    purple:      'bg-violet-500/15',
   }
 
   if (loading) {
@@ -65,25 +78,31 @@ function KpiCard({ label, value, prefix = '', suffix = '', icon: Icon, variant =
   }
 
   return (
-    <Card className="bg-card border-border hover:border-muted-foreground/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg relative overflow-hidden group">
-      {/* Subtle background glow effect on hover */}
-      <div className={cn("absolute -right-4 -top-4 size-24 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500", bgMap[variant].split(' ')[0])} />
+    <Card className={cn(
+      "bg-card border-border hover:border-muted-foreground/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg relative overflow-hidden group",
+      bgMap[variant].split(' ').slice(1).join(' ')
+    )}>
+      {/* Subtle background glow on hover */}
+      <div className={cn("absolute -right-4 -top-4 size-24 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500", iconBgMap[variant])} />
       
       <CardContent className="p-6 relative z-10">
         <div className="flex items-start justify-between mb-4">
-          <p className="kpi-label font-semibold">{label}</p>
-          <div className={cn('flex size-10 items-center justify-center rounded-lg transition-colors', bgMap[variant].split(' ')[0])}>
+          <p className="text-sm font-semibold text-muted-foreground">{label}</p>
+          <div className={cn('flex size-10 items-center justify-center rounded-lg', iconBgMap[variant])}>
             <Icon className={cn('size-5', colorMap[variant])} />
           </div>
         </div>
         <motion.p
-          className={cn('text-4xl font-extrabold tracking-tight tabular-nums', colorMap[variant])}
+          className={cn('text-3xl font-extrabold tracking-tight tabular-nums', colorMap[variant])}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut' }}
         >
-          {prefix}{typeof value === 'number' ? value.toLocaleString() : value}{suffix}
+          {prefix}{typeof value === 'number' ? value.toLocaleString() : (value ?? '—')}{suffix}
         </motion.p>
+        {subtext && (
+          <p className="text-xs text-muted-foreground mt-1.5">{subtext}</p>
+        )}
       </CardContent>
     </Card>
   )
@@ -101,6 +120,149 @@ const TYPE_LABELS = {
   UNEXPECTED_REFUND:       'Unexpected Refund',
   DUPLICATE_ORDER:         'Duplicate Order',
   DATA_QUALITY:            'Data Quality',
+}
+
+const SEVERITY_COLORS = { HIGH: 'destructive', MEDIUM: 'warning', LOW: 'secondary' }
+
+function AiSummaryCard({ sessionId }) {
+  const { api } = useApi()
+  const [summary, setSummary] = useState(null)
+
+  // Fetch cached summary on mount / session change
+  useEffect(() => {
+    setSummary(null)
+    if (!sessionId) return
+    api.get(`/llm/summarize/${sessionId}`).then(({ data }) => {
+      if (data.summary) setSummary(data.summary)
+    }).catch(() => {})
+  }, [sessionId])
+
+  const summaryMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post('/llm/summarize', { session_id: sessionId })
+      return data
+    },
+    onSuccess: (data) => setSummary(data.summary),
+  })
+
+  const sev = summary?.overall_severity
+  const sevColor = sev === 'HIGH' ? 'text-destructive' : sev === 'MEDIUM' ? 'text-amber-500' : 'text-green-500'
+  const sevBg   = sev === 'HIGH' ? 'bg-destructive/10 border-destructive/30' : sev === 'MEDIUM' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-green-500/10 border-green-500/30'
+
+  return (
+    <Card className="border-border shadow-sm">
+      <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10">
+            <Sparkles className="size-4 text-primary" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base font-bold">AI Executive Summary</CardTitle>
+              {summary?.cached && (
+                <Badge variant="outline" className="text-xs text-muted-foreground border-border">Cached</Badge>
+              )}
+            </div>
+            <CardDescription className="text-xs">LLM-generated overview of this reconciliation run</CardDescription>
+          </div>
+        </div>
+        {!summary && (
+          <Button
+            onClick={() => summaryMutation.mutate()}
+            disabled={summaryMutation.isPending}
+            size="sm"
+            className="shrink-0"
+          >
+            {summaryMutation.isPending ? (
+              <><Loader2 className="mr-2 size-3.5 animate-spin" />Analyzing…</>
+            ) : (
+              <><Sparkles className="mr-2 size-3.5" />Generate Summary</>
+            )}
+          </Button>
+        )}
+      </CardHeader>
+
+      <CardContent className="pt-4">
+        {summaryMutation.isPending && (
+          <div className="flex flex-col gap-3">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-5/6" />
+          </div>
+        )}
+
+        {summaryMutation.isError && (
+          <div className="flex items-center gap-2 text-sm text-destructive p-3 rounded-md bg-destructive/10 border border-destructive/20">
+            <AlertTriangle className="size-4 shrink-0" />
+            Failed to generate summary. Please try again.
+          </div>
+        )}
+
+        {!summary && !summaryMutation.isPending && !summaryMutation.isError && (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            Click "Generate Summary" to get an AI-powered analysis of all discrepancies in this run.
+          </p>
+        )}
+
+        {summary && (
+          <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            {/* Headline + Severity */}
+            <div className={cn("flex items-start justify-between gap-4 p-4 rounded-lg border", sevBg)}>
+              <p className="text-sm font-semibold text-foreground leading-relaxed">{summary.headline}</p>
+              <Badge variant="outline" className={cn("shrink-0 font-bold border", sevColor)}>
+                {sev} RISK
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Key Findings */}
+              <div className="lg:col-span-2 p-4 rounded-lg bg-muted/30 border border-border">
+                <div className="flex items-center gap-2 mb-3">
+                  <ListChecks className="size-4 text-primary" />
+                  <h4 className="text-sm font-semibold text-foreground">Key Findings</h4>
+                </div>
+                <ul className="flex flex-col gap-1.5">
+                  {summary.key_findings?.map((f, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                      <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Top Priority */}
+              <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="size-4 text-amber-500" />
+                  <h4 className="text-sm font-semibold text-amber-600 dark:text-amber-400">Top Priority</h4>
+                </div>
+                <p className="text-sm text-foreground leading-relaxed">{summary.top_priority}</p>
+              </div>
+            </div>
+
+            {/* Recommended Actions */}
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingDown className="size-4 text-primary" />
+                <h4 className="text-sm font-semibold text-primary">Recommended Actions</h4>
+              </div>
+              <ol className="flex flex-col gap-1.5">
+                {summary.recommended_actions?.map((a, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-sm text-foreground">
+                    <span className="shrink-0 flex size-5 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold mt-0.5">
+                      {i + 1}
+                    </span>
+                    {a}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 export default function DashboardPage() {
@@ -160,28 +322,25 @@ export default function DashboardPage() {
       })
     : []
 
-  // --- Chart Data Preparation ---
+  // --- Chart Data ---
 
-  // Pie Chart (Severity)
   const pieData = {
     labels: ['High Risk', 'Medium Risk', 'Low Risk'],
-    datasets: [
-      {
-        data: [
-          summary?.severity_breakdown?.HIGH || 0,
-          summary?.severity_breakdown?.MEDIUM || 0,
-          summary?.severity_breakdown?.LOW || 0,
-        ],
-        backgroundColor: [
-          'rgba(239, 68, 68, 0.9)', // red-500
-          'rgba(245, 158, 11, 0.9)', // amber-500
-          'rgba(34, 197, 94, 0.9)',  // green-500
-        ],
-        borderColor: 'rgba(0,0,0,0.1)',
-        borderWidth: 1,
-        hoverOffset: 4,
-      }
-    ]
+    datasets: [{
+      data: [
+        summary?.severity_breakdown?.HIGH || 0,
+        summary?.severity_breakdown?.MEDIUM || 0,
+        summary?.severity_breakdown?.LOW || 0,
+      ],
+      backgroundColor: [
+        'rgba(239, 68, 68, 0.9)',
+        'rgba(245, 158, 11, 0.9)',
+        'rgba(34, 197, 94, 0.9)',
+      ],
+      borderColor: 'rgba(0,0,0,0.1)',
+      borderWidth: 1,
+      hoverOffset: 4,
+    }]
   }
 
   const pieOptions = {
@@ -202,25 +361,18 @@ export default function DashboardPage() {
     }
   }
 
-  // Bar Chart (Discrepancy Types)
-  const barLabels = typeBreakdown.map(([type]) => TYPE_LABELS[type] || type)
-  const barDataVals = typeBreakdown.map(([, data]) => data.total_risk)
-  const barColors = typeBreakdown.map(([, data]) => {
-    if (data.severities?.HIGH) return 'rgba(239, 68, 68, 0.8)'
-    if (data.severities?.MEDIUM) return 'rgba(245, 158, 11, 0.8)'
-    return 'rgba(34, 197, 94, 0.8)'
-  })
-
   const barData = {
-    labels: barLabels,
-    datasets: [
-      {
-        label: 'Total at Risk ($)',
-        data: barDataVals,
-        backgroundColor: barColors,
-        borderRadius: 4,
-      }
-    ]
+    labels: typeBreakdown.map(([type]) => TYPE_LABELS[type] || type),
+    datasets: [{
+      label: 'Total at Risk ($)',
+      data: typeBreakdown.map(([, data]) => data.total_risk),
+      backgroundColor: typeBreakdown.map(([, data]) => {
+        if (data.severities?.HIGH) return 'rgba(239, 68, 68, 0.8)'
+        if (data.severities?.MEDIUM) return 'rgba(245, 158, 11, 0.8)'
+        return 'rgba(34, 197, 94, 0.8)'
+      }),
+      borderRadius: 4,
+    }]
   }
 
   const barOptions = {
@@ -234,9 +386,7 @@ export default function DashboardPage() {
         bodyFont: { family: 'inherit' },
         padding: 10,
         cornerRadius: 8,
-        callbacks: {
-          label: (context) => ` $${context.parsed.y.toFixed(2)}`
-        }
+        callbacks: { label: (c) => ` $${c.parsed.y.toFixed(2)}` }
       }
     },
     scales: {
@@ -269,10 +419,19 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* KPI Cards — 6 columns on XL */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <KpiCard loading={loading} label="Orders Processed" value={summary?.total_orders} icon={FileText} />
         <KpiCard loading={loading} label="Payments Processed" value={summary?.total_payments} icon={CheckCircle2} variant="success" />
+        <KpiCard
+          loading={loading}
+          label="Total Reconciled"
+          value={summary?.total_reconciled_value?.toFixed(2)}
+          prefix="$"
+          icon={Scale}
+          variant="primary"
+          subtext="Sum of all order values"
+        />
         <KpiCard
           loading={loading}
           label="Discrepancies Found"
@@ -282,11 +441,21 @@ export default function DashboardPage() {
         />
         <KpiCard
           loading={loading}
+          label="Total in Dispute"
+          value={summary?.total_in_dispute?.toFixed(2)}
+          prefix="$"
+          icon={ShieldAlert}
+          variant={summary?.total_in_dispute > 0 ? 'warning' : 'success'}
+          subtext="Sum of all mismatched amounts"
+        />
+        <KpiCard
+          loading={loading}
           label="Total at Risk"
           value={summary?.total_at_risk?.toFixed(2)}
           prefix="$"
           icon={DollarSign}
           variant={summary?.total_at_risk > 0 ? 'danger' : 'success'}
+          subtext="Highest-severity exposure"
         />
       </div>
 
@@ -346,6 +515,11 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Executive Summary */}
+      {latestSession && !loading && (
+        <AiSummaryCard sessionId={latestSession.id} />
+      )}
     </div>
   )
 }

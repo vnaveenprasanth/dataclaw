@@ -12,7 +12,18 @@ import {
   Sparkles,
   Loader2,
   AlertTriangle,
-  Activity
+  Activity,
+  TrendingDown,
+  ListChecks,
+  Zap,
+  Package,
+  CreditCard,
+  ArrowRightLeft,
+  Clock,
+  Mail,
+  Hash,
+  Banknote,
+  BadgePercent,
 } from 'lucide-react'
 import {
   Card,
@@ -37,9 +48,9 @@ import { Button } from '@/components/ui/button'
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
 
@@ -63,12 +74,383 @@ function SeverityIndicator({ severity }) {
   return <div className="flex items-center gap-2"><div className="size-2 rounded-full bg-green-500" /><span className="text-sm font-medium">Low</span></div>
 }
 
+function DetailRow({ icon: Icon, label, value, mono = false, highlight = false }) {
+  if (value === null || value === undefined || value === '') return null
+  return (
+    <div className="flex items-start justify-between gap-4 py-2.5 border-b border-border/40 last:border-0">
+      <div className="flex items-center gap-2 shrink-0">
+        <Icon className="size-3.5 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground font-medium">{label}</span>
+      </div>
+      <span className={cn(
+        'text-sm text-right break-all max-w-[60%]',
+        mono && 'font-mono text-xs',
+        highlight ? 'font-bold text-foreground' : 'font-medium text-foreground'
+      )}>
+        {value}
+      </span>
+    </div>
+  )
+}
+
+// Per-run AI summary component
+function RunAiSummary({ sessionId }) {
+  const { api } = useApi()
+  const [summary, setSummary] = useState(null)
+
+  // Try to load cached summary whenever session changes
+  useEffect(() => {
+    setSummary(null)
+    if (!sessionId) return
+    api.get(`/llm/summarize/${sessionId}`).then(({ data }) => {
+      if (data.summary) setSummary(data.summary)
+    }).catch(() => {})
+  }, [sessionId])
+
+  const summaryMutation = useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post('/llm/summarize', { session_id: sessionId })
+      return data
+    },
+    onSuccess: (data) => setSummary(data.summary),
+  })
+
+  const sev = summary?.overall_severity
+  const sevColor = sev === 'HIGH' ? 'text-destructive' : sev === 'MEDIUM' ? 'text-amber-500' : 'text-green-500'
+  const sevBg   = sev === 'HIGH' ? 'bg-destructive/10 border-destructive/30' : sev === 'MEDIUM' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-green-500/10 border-green-500/30'
+
+  return (
+    <Card className="border-border shadow-sm mb-4">
+      <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border py-4">
+        <div className="flex items-center gap-2">
+          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+            <Sparkles className="size-4 text-primary" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-bold">AI Summary for this Run</CardTitle>
+              {summary?.cached && (
+                <Badge variant="outline" className="text-xs text-muted-foreground border-border">Cached</Badge>
+              )}
+            </div>
+            <CardDescription className="text-xs">On-demand analysis of all discrepancies</CardDescription>
+          </div>
+        </div>
+        {!summary && (
+          <Button
+            onClick={() => summaryMutation.mutate()}
+            disabled={summaryMutation.isPending}
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+          >
+            {summaryMutation.isPending ? (
+              <><Loader2 className="mr-2 size-3.5 animate-spin" />Analyzing…</>
+            ) : (
+              <><Sparkles className="mr-2 size-3.5" />Generate</>
+            )}
+          </Button>
+        )}
+      </CardHeader>
+
+      {(summaryMutation.isPending || summary || summaryMutation.isError) && (
+        <CardContent className="pt-4">
+          {summaryMutation.isPending && (
+            <div className="flex flex-col gap-2.5">
+              <Skeleton className="h-3.5 w-3/4" />
+              <Skeleton className="h-3.5 w-1/2" />
+              <Skeleton className="h-3.5 w-5/6" />
+            </div>
+          )}
+
+          {summaryMutation.isError && (
+            <div className="flex items-center gap-2 text-sm text-destructive p-3 rounded-md bg-destructive/10 border border-destructive/20">
+              <AlertTriangle className="size-4 shrink-0" />
+              Failed to generate summary. Please try again.
+            </div>
+          )}
+
+          {summary && (
+            <div className="flex flex-col gap-3 animate-in fade-in duration-300">
+              <div className={cn("flex items-start justify-between gap-4 p-3 rounded-lg border", sevBg)}>
+                <p className="text-sm font-semibold text-foreground leading-relaxed">{summary.headline}</p>
+                <Badge variant="outline" className={cn("shrink-0 font-bold border text-xs", sevColor)}>
+                  {sev}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <ListChecks className="size-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-foreground">Key Findings</span>
+                  </div>
+                  <ul className="flex flex-col gap-1">
+                    {summary.key_findings?.map((f, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <TrendingDown className="size-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-primary">Recommended Actions</span>
+                  </div>
+                  <ol className="flex flex-col gap-1">
+                    {summary.recommended_actions?.map((a, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                        <span className="shrink-0 flex size-4 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-bold mt-0.5">
+                          {i + 1}
+                        </span>
+                        {a}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      )}
+    </Card>
+  )
+}
+
+// Discrepancy Detail Sheet — wide, premium design
+function DiscrepancySheet({ row, onClose, explainMutation }) {
+  if (!row) return null
+
+  const sev = row.severity
+  const sevBanner = sev === 'HIGH'
+    ? 'bg-destructive/10 border-destructive/30 text-destructive'
+    : sev === 'MEDIUM'
+    ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
+    : 'bg-green-500/10 border-green-500/30 text-green-500'
+  const sevLabel = sev === 'HIGH' ? 'High Severity' : sev === 'MEDIUM' ? 'Medium Severity' : 'Low Severity'
+
+  const orderDetail = row.order_detail || {}
+  const paymentDetail = row.payment_detail || {}
+  const expl = row.explanation
+
+  const urgencyColor = expl?.urgency === 'HIGH' ? 'text-destructive bg-destructive/10 border-destructive/30'
+    : expl?.urgency === 'MEDIUM' ? 'text-amber-500 bg-amber-500/10 border-amber-500/30'
+    : 'text-green-500 bg-green-500/10 border-green-500/30'
+
+  const confColor = expl?.confidence === 'HIGH' ? 'text-green-500 bg-green-500/10 border-green-500/30'
+    : expl?.confidence === 'MEDIUM' ? 'text-amber-500 bg-amber-500/10 border-amber-500/30'
+    : 'text-muted-foreground bg-muted/30 border-border'
+
+  return (
+    <div className="flex-1 overflow-y-auto flex flex-col">
+      {/* Hero Banner */}
+      <div className={cn("px-6 py-5 border-b flex items-center justify-between gap-4", sevBanner)}>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-5" />
+            <SheetTitle className="text-xl font-bold text-foreground">
+              {TYPE_LABELS[row.discrepancy_type] || row.discrepancy_type}
+            </SheetTitle>
+          </div>
+          <SheetDescription className="text-sm text-muted-foreground mt-0">
+            {row.order_id && <span className="font-mono mr-3">Order: {row.order_id}</span>}
+            {row.transaction_ref && <span className="font-mono">Txn: {row.transaction_ref}</span>}
+          </SheetDescription>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Badge variant="outline" className={cn("font-bold border text-sm px-3 py-1", sevBanner)}>
+            {sevLabel}
+          </Badge>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Risk Amount</p>
+            <p className="text-2xl font-extrabold text-foreground tabular-nums">
+              ${(row.risk_amount || 0).toFixed(2)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-5 p-6">
+        {/* Amount Delta Callout */}
+        {(row.order_amount !== null || row.payment_amount !== null) && row.discrepancy_type !== 'MISSING_PAYMENT' && row.discrepancy_type !== 'PHANTOM_PAYMENT' && (
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/30 border border-border">
+            <div className="flex-1 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Order Amount</p>
+              <p className="text-xl font-bold text-foreground tabular-nums">${(row.order_amount || 0).toFixed(2)}</p>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <ArrowRightLeft className="size-4 text-muted-foreground" />
+              <span className={cn(
+                "text-xs font-bold tabular-nums",
+                row.difference !== 0 ? 'text-destructive' : 'text-green-500'
+              )}>
+                Δ ${Math.abs(row.difference || 0).toFixed(2)}
+              </span>
+            </div>
+            <div className="flex-1 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Payment Amount</p>
+              <p className="text-xl font-bold text-foreground tabular-nums">${(row.payment_amount || 0).toFixed(2)}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Detail Cards Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Order Details */}
+          <div className="rounded-lg border border-border bg-muted/10">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/20 rounded-t-lg">
+              <Package className="size-4 text-primary" />
+              <span className="text-sm font-bold text-foreground">Order Record</span>
+            </div>
+            <div className="px-4 py-2">
+              <DetailRow icon={Hash} label="Order ID" value={row.order_id} mono highlight />
+              <DetailRow icon={Clock} label="Order Date" value={orderDetail.order_date ? new Date(orderDetail.order_date).toLocaleString() : null} />
+              <DetailRow icon={Mail} label="Customer Email" value={orderDetail.customer_email} />
+              <DetailRow icon={Banknote} label="Gross Amount" value={orderDetail.gross_amount != null ? `$${Number(orderDetail.gross_amount).toFixed(2)}` : null} />
+              <DetailRow icon={BadgePercent} label="Discount" value={orderDetail.discount != null ? `$${Number(orderDetail.discount).toFixed(2)}` : null} />
+              <DetailRow icon={Banknote} label="Net Amount" value={orderDetail.net_amount != null ? `$${Number(orderDetail.net_amount).toFixed(2)}` : row.order_amount != null ? `$${row.order_amount.toFixed(2)}` : null} highlight />
+              <DetailRow icon={Activity} label="Currency" value={orderDetail.currency || row.currency?.split('/')[0]} />
+              <DetailRow icon={Activity} label="Order Status" value={orderDetail.status || row.details?.order_status} />
+            </div>
+          </div>
+
+          {/* Payment Details */}
+          <div className="rounded-lg border border-border bg-muted/10">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/20 rounded-t-lg">
+              <CreditCard className="size-4 text-primary" />
+              <span className="text-sm font-bold text-foreground">Payment Record</span>
+            </div>
+            <div className="px-4 py-2">
+              <DetailRow icon={Hash} label="Transaction Ref" value={row.transaction_ref} mono highlight />
+              <DetailRow icon={Clock} label="Processed At" value={paymentDetail.processed_at ? new Date(paymentDetail.processed_at).toLocaleString() : null} />
+              <DetailRow icon={Hash} label="Order Reference" value={paymentDetail.order_reference} mono />
+              <DetailRow icon={Banknote} label="Amount" value={paymentDetail.amount != null ? `$${Number(paymentDetail.amount).toFixed(2)}` : row.payment_amount != null ? `$${row.payment_amount.toFixed(2)}` : null} highlight />
+              <DetailRow icon={BadgePercent} label="Fee" value={paymentDetail.fee != null ? `$${Number(paymentDetail.fee).toFixed(2)}` : null} />
+              <DetailRow icon={Banknote} label="Net Settled" value={paymentDetail.net_settled != null ? `$${Number(paymentDetail.net_settled).toFixed(2)}` : null} />
+              <DetailRow icon={Activity} label="Currency" value={paymentDetail.currency || row.currency?.split('/')[1]} />
+              <DetailRow icon={Activity} label="Payment Type" value={paymentDetail.payment_type || row.details?.payment_type} />
+              <DetailRow icon={Activity} label="Payment Status" value={paymentDetail.status || row.details?.payment_status} />
+            </div>
+          </div>
+        </div>
+
+        {/* AI Root Cause Section */}
+        <div className="flex flex-col gap-4 border-t border-border pt-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+                <Sparkles className="size-4 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-foreground">AI Root Cause Analysis</h3>
+                <p className="text-xs text-muted-foreground">Powered by Gemini</p>
+              </div>
+            </div>
+            {!expl && (
+              <Button
+                onClick={() => explainMutation.mutate(row.id)}
+                disabled={explainMutation.isPending}
+                size="sm"
+              >
+                {explainMutation.isPending ? (
+                  <><Loader2 className="mr-2 size-3.5 animate-spin" />Analyzing…</>
+                ) : (
+                  <><Sparkles className="mr-2 size-3.5" />Generate Analysis</>
+                )}
+              </Button>
+            )}
+          </div>
+
+          {explainMutation.isError && (
+            <div className="flex items-center gap-2 text-sm text-destructive p-3 rounded-md bg-destructive/10 border border-destructive/20">
+              <AlertTriangle className="size-4 shrink-0" />
+              Failed to generate explanation. Please try again.
+            </div>
+          )}
+
+          {explainMutation.isPending && (
+            <div className="flex flex-col gap-3 p-4 rounded-lg bg-muted/20 border border-border">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-4/5" />
+              <Skeleton className="h-4 w-3/5" />
+            </div>
+          )}
+
+          {!expl && !explainMutation.isPending && !explainMutation.isError && (
+            <p className="text-sm text-muted-foreground text-center py-3">
+              Click "Generate Analysis" for a detailed AI explanation of this discrepancy.
+            </p>
+          )}
+
+          {expl && (
+            <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {/* Badges Row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground">AI Assessment:</span>
+                <Badge variant="outline" className={cn("text-xs font-semibold border", urgencyColor)}>
+                  {expl.urgency} Urgency
+                </Badge>
+                <Badge variant="outline" className={cn("text-xs font-semibold border", confColor)}>
+                  {expl.confidence} Confidence
+                </Badge>
+                {expl.is_partial && (
+                  <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/30 bg-amber-500/10">
+                    Partial Result
+                  </Badge>
+                )}
+              </div>
+
+              {/* Likely Cause */}
+              <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className="size-4 text-primary" />
+                  <h4 className="text-sm font-semibold text-primary">Likely Cause</h4>
+                </div>
+                <p className="text-sm text-foreground leading-relaxed">{expl.likely_cause}</p>
+              </div>
+
+              {/* Business Impact */}
+              <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingDown className="size-4 text-amber-500" />
+                  <h4 className="text-sm font-semibold text-amber-600 dark:text-amber-400">Business Impact</h4>
+                </div>
+                <p className="text-sm text-foreground leading-relaxed">{expl.business_impact}</p>
+              </div>
+
+              {/* Action Items */}
+              {expl.action_items?.length > 0 && (
+                <div className="p-4 rounded-lg bg-muted/30 border border-border">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ListChecks className="size-4 text-foreground" />
+                    <h4 className="text-sm font-semibold text-foreground">Recommended Actions</h4>
+                  </div>
+                  <ol className="flex flex-col gap-2">
+                    {expl.action_items.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-sm text-foreground">
+                        <span className="shrink-0 flex size-5 items-center justify-center rounded-full bg-foreground/10 text-foreground text-xs font-bold mt-0.5">
+                          {i + 1}
+                        </span>
+                        {item}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function RunsPage() {
   const { api } = useApi()
   const [activeSessionId, setActiveSessionId] = useState(null)
-  const [selectedRow, setSelectedRow] = useState(null) // For the Sheet
+  const [selectedRow, setSelectedRow] = useState(null)
 
-  // Discrepancy Table State
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
   const [search, setSearch] = useState('')
@@ -85,9 +467,7 @@ export default function RunsPage() {
     return () => clearTimeout(t)
   }, [search])
 
-  useEffect(() => {
-    setPage(1)
-  }, [severityFilter, typeFilter])
+  useEffect(() => { setPage(1) }, [severityFilter, typeFilter])
 
   // Fetch Sessions
   const { data: sessions, isLoading: sessionsLoading } = useQuery({
@@ -130,7 +510,6 @@ export default function RunsPage() {
       return data
     },
     onSuccess: (data) => {
-      // update the selected row with the explanation so it renders immediately
       setSelectedRow(prev => ({ ...prev, explanation: data.explanation }))
     }
   })
@@ -145,7 +524,7 @@ export default function RunsPage() {
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">
-      {/* ── Top Section: Runs List ───────────────────────────────────── */}
+      {/* ── Top Section: Runs List ─────────────────────────────────── */}
       <Card className="rounded-md border-border shadow-sm">
         <CardHeader>
           <CardTitle className="text-2xl font-bold tracking-normal flex items-center gap-2">
@@ -157,73 +536,73 @@ export default function RunsPage() {
         <CardContent className="p-4 sm:p-6 pt-0">
           <div className="rounded-md border-2 border-border/60 overflow-hidden shadow-sm">
             <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead className="w-[100px]">Run ID</TableHead>
-                <TableHead className="w-[200px]">Date</TableHead>
-                <TableHead className="w-[200px]">Orders File</TableHead>
-                <TableHead className="w-[200px]">Payments File</TableHead>
-                <TableHead className="w-[120px]">Orders</TableHead>
-                <TableHead className="w-[120px]">Payments</TableHead>
-                <TableHead className="w-[120px]">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sessionsLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={7} className="h-14"><Skeleton className="h-4 w-full" /></TableCell>
-                  </TableRow>
-                ))
-              ) : sessions?.length === 0 ? (
+              <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                    No runs found. Upload data to get started.
-                  </TableCell>
+                  <TableHead className="w-[100px]">Run ID</TableHead>
+                  <TableHead className="w-[200px]">Date</TableHead>
+                  <TableHead className="w-[200px]">Orders File</TableHead>
+                  <TableHead className="w-[200px]">Payments File</TableHead>
+                  <TableHead className="w-[120px]">Orders</TableHead>
+                  <TableHead className="w-[120px]">Payments</TableHead>
+                  <TableHead className="w-[120px]">Status</TableHead>
                 </TableRow>
-              ) : (
-                sessions?.map((session) => {
-                  const isActive = activeSessionId === session.id
-                  return (
-                    <TableRow 
-                      key={session.id}
-                      className={cn(
-                        "cursor-pointer transition-colors hover:bg-muted/50",
-                        isActive && "bg-muted"
-                      )}
-                      onClick={() => {
-                        setActiveSessionId(session.id)
-                        setSelectedRow(null)
-                      }}
-                    >
-                      <TableCell className="font-medium">#{session.id}</TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">
-                        {new Date(session.uploaded_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="truncate" title={session.orders_filename}>
-                        {session.orders_filename}
-                      </TableCell>
-                      <TableCell className="truncate" title={session.payments_filename}>
-                        {session.payments_filename}
-                      </TableCell>
-                      <TableCell className="tabular-nums">{session.orders_count}</TableCell>
-                      <TableCell className="tabular-nums">{session.payments_count}</TableCell>
-                      <TableCell>
-                        <Badge variant={session.status === 'COMPLETED' ? 'default' : session.status === 'FAILED' ? 'destructive' : 'secondary'}>
-                          {session.status}
-                        </Badge>
-                      </TableCell>
+              </TableHeader>
+              <TableBody>
+                {sessionsLoading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell colSpan={7} className="h-14"><Skeleton className="h-4 w-full" /></TableCell>
                     </TableRow>
-                  )
-                })
-              )}
-            </TableBody>
-          </Table>
+                  ))
+                ) : sessions?.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                      No runs found. Upload data to get started.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  sessions?.map((session) => {
+                    const isActive = activeSessionId === session.id
+                    return (
+                      <TableRow
+                        key={session.id}
+                        className={cn(
+                          "cursor-pointer transition-colors hover:bg-muted/50",
+                          isActive && "bg-primary/5 border-l-2 border-l-primary"
+                        )}
+                        onClick={() => {
+                          setActiveSessionId(session.id)
+                          setSelectedRow(null)
+                        }}
+                      >
+                        <TableCell className="font-semibold text-primary">#{session.id}</TableCell>
+                        <TableCell className="text-muted-foreground whitespace-nowrap">
+                          {new Date(session.uploaded_at).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="truncate max-w-[200px]" title={session.orders_filename}>
+                          {session.orders_filename}
+                        </TableCell>
+                        <TableCell className="truncate max-w-[200px]" title={session.payments_filename}>
+                          {session.payments_filename}
+                        </TableCell>
+                        <TableCell className="tabular-nums">{session.orders_count}</TableCell>
+                        <TableCell className="tabular-nums">{session.payments_count}</TableCell>
+                        <TableCell>
+                          <Badge variant={session.status === 'COMPLETED' ? 'default' : session.status === 'FAILED' ? 'destructive' : 'secondary'}>
+                            {session.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
 
-      {/* ── Bottom Section: Detailed Discrepancies ───────────────────── */}
+      {/* ── Bottom Section: Detailed Discrepancies ─────────────────── */}
       {activeSessionId && (
         <Card className="animate-in fade-in slide-in-from-top-4 duration-300 relative shadow-sm rounded-md border-border">
           {discFetching && !discLoading && (
@@ -231,16 +610,17 @@ export default function RunsPage() {
               <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           )}
+
           <CardHeader className="flex flex-col gap-4 border-b border-border bg-card">
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 w-full">
               <div className="flex flex-col gap-1 shrink-0">
                 <CardTitle className="text-2xl font-bold tracking-normal flex items-center gap-2">
-                  <List data-icon="inline-start" className="size-6 text-primary" />
+                  <List className="size-6 text-primary" />
                   Discrepancies for Run #{activeSessionId}
                 </CardTitle>
                 <CardDescription>Detailed breakdown of mismatches and data quality issues.</CardDescription>
               </div>
-              
+
               <div className="flex items-center gap-3 ml-auto">
                 <div className="relative w-full sm:w-[280px]">
                   <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
@@ -251,10 +631,10 @@ export default function RunsPage() {
                     className="pl-9 h-10 text-sm"
                   />
                 </div>
-                
+
                 <div className="relative">
-                  <select 
-                    className="h-10 w-[140px] appearance-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  <select
+                    className="h-10 w-[140px] appearance-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     value={severityFilter}
                     onChange={(e) => setSeverityFilter(e.target.value)}
                   >
@@ -269,8 +649,8 @@ export default function RunsPage() {
                 </div>
 
                 <div className="relative">
-                  <select 
-                    className="h-10 w-[200px] appearance-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  <select
+                    className="h-10 w-[200px] appearance-none rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value)}
                   >
@@ -286,7 +666,6 @@ export default function RunsPage() {
               </div>
             </div>
 
-            {/* Active Filters Badges */}
             {hasActiveFilters && (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs text-muted-foreground font-medium pr-1">Active Filters:</span>
@@ -311,78 +690,79 @@ export default function RunsPage() {
               </div>
             )}
           </CardHeader>
-          
+
           <CardContent className="p-4 sm:p-6">
+            {/* Per-run AI Summary */}
+            <RunAiSummary sessionId={activeSessionId} />
+
             <div className="rounded-md border-2 border-border/60 overflow-hidden shadow-sm">
               <Table>
-              <TableHeader className="bg-muted/40">
-                <TableRow>
-                  <TableHead className="w-[140px]">Severity</TableHead>
-                  <TableHead className="w-[200px]">Type</TableHead>
-                  <TableHead>Order ID</TableHead>
-                  <TableHead>Transaction</TableHead>
-                  <TableHead className="w-[140px]">Risk Amt</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {discLoading ? (
-                    Array.from({ length: perPage }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell colSpan={5} className="h-14"><Skeleton className="h-4 w-full" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : discData?.items?.length === 0 ? (
+                <TableHeader className="bg-muted/40">
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center">
-                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                        <CheckCircle2 className="size-8 opacity-50" />
-                        <p>No discrepancies match your filters.</p>
-                      </div>
-                    </TableCell>
+                    <TableHead className="w-[140px]">Severity</TableHead>
+                    <TableHead className="w-[200px]">Type</TableHead>
+                    <TableHead>Order ID</TableHead>
+                    <TableHead>Transaction</TableHead>
+                    <TableHead className="w-[140px]">Risk Amt</TableHead>
                   </TableRow>
-                ) : (
-                  discData?.items?.map((item) => (
-                    <TableRow 
-                      key={item.id} 
-                      onClick={() => setSelectedRow(item)}
-                      className="cursor-pointer hover:bg-muted/50"
-                    >
-                      <TableCell>
-                        <SeverityIndicator severity={item.severity} />
-                      </TableCell>
-                      <TableCell className="font-medium text-sm text-foreground">
-                        {TYPE_LABELS[item.discrepancy_type] || item.discrepancy_type}
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{item.order_id || '—'}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground font-mono">{item.transaction_ref || '—'}</TableCell>
-                      <TableCell className="tabular-nums font-semibold text-foreground">
-                        ${(item.risk_amount || 0).toFixed(2)}
+                </TableHeader>
+                <TableBody>
+                  {discLoading ? (
+                    Array.from({ length: perPage }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell colSpan={5} className="h-14"><Skeleton className="h-4 w-full" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : discData?.items?.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="h-32 text-center">
+                        <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                          <CheckCircle2 className="size-8 opacity-50" />
+                          <p>No discrepancies match your filters.</p>
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    discData?.items?.map((item) => (
+                      <TableRow
+                        key={item.id}
+                        onClick={() => {
+                          setSelectedRow(item)
+                          explainMutation.reset()
+                        }}
+                        className="cursor-pointer hover:bg-muted/50"
+                      >
+                        <TableCell>
+                          <SeverityIndicator severity={item.severity} />
+                        </TableCell>
+                        <TableCell className="font-medium text-sm text-foreground">
+                          {TYPE_LABELS[item.discrepancy_type] || item.discrepancy_type}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{item.order_id || '—'}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground font-mono">{item.transaction_ref || '—'}</TableCell>
+                        <TableCell className="tabular-nums font-semibold text-foreground">
+                          ${(item.risk_amount || 0).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
-          
-          {/* Pagination Controls in CardFooter */}
+
           {!discLoading && discData && (
             <CardFooter className="flex items-center justify-between border-t border-border p-4 bg-muted/10">
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span>
                   Showing <span className="font-medium text-foreground">{((page - 1) * perPage) + 1}</span> to <span className="font-medium text-foreground">{Math.min(page * perPage, discData.total)}</span> of <span className="font-medium text-foreground">{discData.total}</span> entries
                 </span>
-                
                 <div className="flex items-center gap-2">
                   <span>Rows per page:</span>
-                  <select 
+                  <select
                     className="h-8 w-16 appearance-none rounded-md border border-input bg-card px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                     value={perPage}
-                    onChange={(e) => {
-                      setPerPage(Number(e.target.value))
-                      setPage(1)
-                    }}
+                    onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1) }}
                   >
                     <option value="10">10</option>
                     <option value="20">20</option>
@@ -391,27 +771,14 @@ export default function RunsPage() {
                   </select>
                 </div>
               </div>
-              
               <div className="flex flex-row items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="size-8"
-                >
+                <Button variant="outline" size="icon" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="size-8">
                   <ChevronLeft className="size-4" />
                 </Button>
                 <span className="text-sm font-medium text-foreground mx-2">
                   Page {page} of {discData.pages || 1}
                 </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setPage(p => Math.min(discData.pages, p + 1))}
-                  disabled={page >= (discData.pages || 1)}
-                  className="size-8"
-                >
+                <Button variant="outline" size="icon" onClick={() => setPage(p => Math.min(discData.pages, p + 1))} disabled={page >= (discData.pages || 1)} className="size-8">
                   <ChevronRight className="size-4" />
                 </Button>
               </div>
@@ -420,121 +787,22 @@ export default function RunsPage() {
         </Card>
       )}
 
-      {/* ── Sheet: Row Details ───────────────────────────────────────── */}
+      {/* ── Discrepancy Detail Sheet ───────────────────────────────── */}
       <Sheet open={!!selectedRow} onOpenChange={(open) => !open && setSelectedRow(null)}>
-        <SheetContent className="w-full sm:max-w-2xl sm:w-[800px] flex flex-col p-0" side="right">
+        <SheetContent
+          className="flex flex-col p-0 gap-0"
+          style={{ width: '50vw', minWidth: '700px', maxWidth: '1100px' }}
+          side="right"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>Discrepancy Detail</SheetTitle>
+          </SheetHeader>
           {selectedRow && (
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
-              <SheetHeader className="px-0">
-                <SheetTitle className="text-2xl flex items-center gap-3">
-                  <AlertTriangle className={cn(
-                    "size-6",
-                    selectedRow.severity === 'HIGH' ? 'text-destructive' : selectedRow.severity === 'MEDIUM' ? 'text-amber-500' : 'text-green-500'
-                  )} />
-                  {TYPE_LABELS[selectedRow.discrepancy_type] || selectedRow.discrepancy_type}
-                </SheetTitle>
-                <SheetDescription className="text-base mt-2">
-                  This discrepancy represents a financial risk of <strong className="text-foreground">${(selectedRow.risk_amount || 0).toFixed(2)}</strong>.
-                </SheetDescription>
-              </SheetHeader>
-
-              {/* Detail Cards */}
-              <div className="grid grid-cols-2 gap-4">
-                <Card className="bg-muted/20 border-border/50">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Order Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-col gap-3">
-                    <div className="flex justify-between border-b border-border/50 pb-2">
-                      <span className="text-sm text-muted-foreground">Order ID</span>
-                      <span className="text-sm font-medium">{selectedRow.order_id || '—'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-border/50 pb-2">
-                      <span className="text-sm text-muted-foreground">Order Amount</span>
-                      <span className="text-sm font-medium tabular-nums">${selectedRow.order_amount?.toFixed(2) || '0.00'}</span>
-                    </div>
-                    <div className="flex justify-between pb-1">
-                      <span className="text-sm text-muted-foreground">Currency</span>
-                      <span className="text-sm font-medium">{selectedRow.currency?.split('/')[0] || selectedRow.currency || '—'}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-muted/20 border-border/50">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Transaction Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="flex flex-col gap-3">
-                    <div className="flex justify-between border-b border-border/50 pb-2">
-                      <span className="text-sm text-muted-foreground">Transaction Ref</span>
-                      <span className="text-sm font-medium font-mono">{selectedRow.transaction_ref || '—'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-border/50 pb-2">
-                      <span className="text-sm text-muted-foreground">Payment Amount</span>
-                      <span className="text-sm font-medium tabular-nums">${selectedRow.payment_amount?.toFixed(2) || '0.00'}</span>
-                    </div>
-                    <div className="flex justify-between pb-1">
-                      <span className="text-sm text-muted-foreground">Currency</span>
-                      <span className="text-sm font-medium">{selectedRow.currency?.split('/')[1] || selectedRow.currency || '—'}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* AI Explanation Section */}
-              <div className="flex flex-col gap-4 mt-2 border-t border-border pt-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold flex items-center gap-2">
-                    <Sparkles className="size-5 text-primary" />
-                    AI Root Cause Analysis
-                  </h3>
-                  {!selectedRow.explanation && (
-                    <Button 
-                      onClick={() => explainMutation.mutate(selectedRow.id)}
-                      disabled={explainMutation.isPending}
-                      className="shadow-sm"
-                    >
-                      {explainMutation.isPending ? (
-                        <><Loader2 className="mr-2 size-4 animate-spin" /> Analyzing...</>
-                      ) : (
-                        'Generate Analysis'
-                      )}
-                    </Button>
-                  )}
-                </div>
-
-                {explainMutation.isError && (
-                  <div className="p-4 rounded-md bg-destructive/10 text-destructive text-sm border border-destructive/20">
-                    Failed to generate explanation. Please try again.
-                  </div>
-                )}
-
-                {selectedRow.explanation && (
-                  <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2">
-                    <div className="p-4 rounded-md bg-primary/5 border border-primary/20">
-                      <h4 className="text-sm font-semibold text-primary mb-1">Likely Cause</h4>
-                      <p className="text-sm text-foreground leading-relaxed">{selectedRow.explanation.likely_cause}</p>
-                    </div>
-                    
-                    <div className="p-4 rounded-md bg-amber-500/5 border border-amber-500/20">
-                      <h4 className="text-sm font-semibold text-amber-600 mb-1">Business Impact</h4>
-                      <p className="text-sm text-foreground leading-relaxed">{selectedRow.explanation.business_impact}</p>
-                    </div>
-
-                    {selectedRow.explanation.action_items?.length > 0 && (
-                      <div className="p-4 rounded-md bg-muted border border-border">
-                        <h4 className="text-sm font-semibold text-muted-foreground mb-2">Recommended Actions</h4>
-                        <ul className="list-disc pl-5 space-y-1">
-                          {selectedRow.explanation.action_items.map((item, i) => (
-                            <li key={i} className="text-sm text-foreground">{item}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+            <DiscrepancySheet
+              row={selectedRow}
+              onClose={() => setSelectedRow(null)}
+              explainMutation={explainMutation}
+            />
           )}
         </SheetContent>
       </Sheet>
