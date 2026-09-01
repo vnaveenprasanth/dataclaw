@@ -184,7 +184,7 @@ jobs:
 
             # Run flask db upgrade inside a temporary container
             docker run --rm \
-              --env-file /var/www/dataclaw/backend/.env \
+              -v /var/www/dataclaw/backend/.env:/app/.env:ro \
               --network host \
               ${{ secrets.DOCKERHUB_USERNAME }}/dataclaw-backend:latest \
               flask db upgrade
@@ -203,7 +203,7 @@ jobs:
             docker run -d \
               --name dataclaw-backend \
               --restart unless-stopped \
-              --env-file /var/www/dataclaw/backend/.env \
+              -v /var/www/dataclaw/backend/.env:/app/.env:ro \
               --network host \
               ${{ secrets.DOCKERHUB_USERNAME }}/dataclaw-backend:latest
 
