@@ -4,16 +4,38 @@ import { useApi } from '@/lib/api'
 import { motion } from 'framer-motion'
 import {
   AlertTriangle, CheckCircle2, DollarSign, FileText,
-  ArrowRight, TrendingUp, ShieldAlert, Clock
+  ArrowRight, Activity
 } from 'lucide-react'
 import {
-  Card, CardContent, CardHeader, CardTitle, CardDescription
+  Card, CardContent, CardHeader, CardTitle
 } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 
-// KPI card with framer-motion count-up
+// Chart.js imports
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+} from 'chart.js'
+import { Bar, Pie } from 'react-chartjs-2'
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+)
+
+// KPI card with framer-motion and polished hover effects
 function KpiCard({ label, value, prefix = '', suffix = '', icon: Icon, variant = 'default', loading }) {
   const colorMap = {
     default:     'text-foreground',
@@ -23,11 +45,11 @@ function KpiCard({ label, value, prefix = '', suffix = '', icon: Icon, variant =
     primary:     'text-primary',
   }
   const bgMap = {
-    default:     'bg-muted/30',
-    danger:      'bg-red-500/10',
-    warning:     'bg-amber-500/10',
-    success:     'bg-green-500/10',
-    primary:     'bg-primary/10',
+    default:     'bg-muted/30 shadow-none',
+    danger:      'bg-red-500/10 shadow-[0_0_15px_rgba(239,68,68,0.15)]',
+    warning:     'bg-amber-500/10 shadow-[0_0_15px_rgba(245,158,11,0.15)]',
+    success:     'bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.15)]',
+    primary:     'bg-primary/10 shadow-[0_0_15px_rgba(59,130,246,0.15)]',
   }
 
   if (loading) {
@@ -42,37 +64,27 @@ function KpiCard({ label, value, prefix = '', suffix = '', icon: Icon, variant =
   }
 
   return (
-    <Card className="bg-card border-border hover:border-muted-foreground/40 transition-colors">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-3">
-          <p className="kpi-label">{label}</p>
-          <div className={cn('flex size-8 items-center justify-center rounded-md', bgMap[variant])}>
-            <Icon className={cn('size-4', colorMap[variant])} />
+    <Card className="bg-card border-border hover:border-muted-foreground/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg relative overflow-hidden group">
+      {/* Subtle background glow effect on hover */}
+      <div className={cn("absolute -right-4 -top-4 size-24 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500", variant === 'danger' ? 'bg-red-500/10' : variant === 'success' ? 'bg-green-500/10' : 'bg-primary/10')} />
+      
+      <CardContent className="p-6 relative z-10">
+        <div className="flex items-start justify-between mb-4">
+          <p className="kpi-label font-semibold">{label}</p>
+          <div className={cn('flex size-10 items-center justify-center rounded-lg transition-colors', bgMap[variant])}>
+            <Icon className={cn('size-5', colorMap[variant])} />
           </div>
         </div>
         <motion.p
-          className={cn('kpi-value', colorMap[variant])}
-          initial={{ opacity: 0, y: 8 }}
+          className={cn('text-4xl font-extrabold tracking-tight tabular-nums', colorMap[variant])}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: 'easeOut' }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
         >
           {prefix}{typeof value === 'number' ? value.toLocaleString() : value}{suffix}
         </motion.p>
       </CardContent>
     </Card>
-  )
-}
-
-function SeverityBar({ counts }) {
-  const total = (counts?.HIGH || 0) + (counts?.MEDIUM || 0) + (counts?.LOW || 0)
-  if (!total) return null
-
-  return (
-    <div className="flex gap-1 h-1.5 rounded-full overflow-hidden">
-      <div className="bg-red-500 transition-all" style={{ width: `${(counts.HIGH / total) * 100}%` }} />
-      <div className="bg-amber-500 transition-all" style={{ width: `${(counts.MEDIUM / total) * 100}%` }} />
-      <div className="bg-green-500 transition-all" style={{ width: `${(counts.LOW / total) * 100}%` }} />
-    </div>
   )
 }
 
@@ -89,8 +101,6 @@ const TYPE_LABELS = {
   DUPLICATE_ORDER:         'Duplicate Order',
   DATA_QUALITY:            'Data Quality',
 }
-
-const SEVERITY_ORDER = { HIGH: 0, MEDIUM: 1, LOW: 2 }
 
 export default function DashboardPage() {
   const { api } = useApi()
@@ -121,20 +131,20 @@ export default function DashboardPage() {
   if (!loading && !latestSession) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
-        <div className="flex size-16 items-center justify-center rounded-full bg-muted">
+        <div className="flex size-16 items-center justify-center rounded-full bg-muted shadow-inner">
           <FileText className="size-7 text-muted-foreground" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold text-foreground">No data yet</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Upload your orders and payments CSV files to begin reconciliation
+          <h2 className="text-xl font-bold text-foreground">No data yet</h2>
+          <p className="text-sm text-muted-foreground mt-2 max-w-sm mx-auto">
+            Upload your orders and payments CSV files to begin reconciliation and uncover discrepancies.
           </p>
         </div>
         <button
           onClick={() => navigate('/upload')}
-          className="inline-flex items-center gap-2 h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          className="inline-flex items-center gap-2 h-10 mt-2 rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
         >
-          Upload Data <ArrowRight className="size-3.5" />
+          Upload Data <ArrowRight className="size-4" />
         </button>
       </div>
     )
@@ -149,26 +159,117 @@ export default function DashboardPage() {
       })
     : []
 
+  // --- Chart Data Preparation ---
+
+  // Pie Chart (Severity)
+  const pieData = {
+    labels: ['High Risk', 'Medium Risk', 'Low Risk'],
+    datasets: [
+      {
+        data: [
+          summary?.severity_breakdown?.HIGH || 0,
+          summary?.severity_breakdown?.MEDIUM || 0,
+          summary?.severity_breakdown?.LOW || 0,
+        ],
+        backgroundColor: [
+          'rgba(239, 68, 68, 0.9)', // red-500
+          'rgba(245, 158, 11, 0.9)', // amber-500
+          'rgba(34, 197, 94, 0.9)',  // green-500
+        ],
+        borderColor: 'rgba(0,0,0,0.1)',
+        borderWidth: 1,
+        hoverOffset: 4,
+      }
+    ]
+  }
+
+  const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { color: 'rgba(255, 255, 255, 0.7)', padding: 20, font: { family: 'inherit', size: 12 } }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleFont: { family: 'inherit' },
+        bodyFont: { family: 'inherit' },
+        padding: 10,
+        cornerRadius: 8,
+      }
+    }
+  }
+
+  // Bar Chart (Discrepancy Types)
+  const barLabels = typeBreakdown.map(([type]) => TYPE_LABELS[type] || type)
+  const barDataVals = typeBreakdown.map(([, data]) => data.total_risk)
+  const barColors = typeBreakdown.map(([, data]) => {
+    if (data.severities?.HIGH) return 'rgba(239, 68, 68, 0.8)'
+    if (data.severities?.MEDIUM) return 'rgba(245, 158, 11, 0.8)'
+    return 'rgba(34, 197, 94, 0.8)'
+  })
+
+  const barData = {
+    labels: barLabels,
+    datasets: [
+      {
+        label: 'Total at Risk ($)',
+        data: barDataVals,
+        backgroundColor: barColors,
+        borderRadius: 4,
+      }
+    ]
+  }
+
+  const barOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleFont: { family: 'inherit' },
+        bodyFont: { family: 'inherit' },
+        padding: 10,
+        cornerRadius: 8,
+        callbacks: {
+          label: (context) => ` $${context.parsed.y.toFixed(2)}`
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: 'rgba(255,255,255,0.05)' },
+        ticks: { color: 'rgba(255, 255, 255, 0.5)', font: { family: 'inherit' } }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { color: 'rgba(255, 255, 255, 0.7)', font: { family: 'inherit', size: 11 }, maxRotation: 45, minRotation: 45 }
+      }
+    }
+  }
+
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-8 space-y-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Reconciliation Overview</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {loading ? '—' : `Session #${latestSession?.id} · ${latestSession?.orders_filename} + ${latestSession?.payments_filename}`}
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Reconciliation Overview</h1>
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+            {loading ? 'Loading session details...' : (
+              <>
+                <Activity className="size-3.5" />
+                Session #{latestSession?.id} · Processed {new Date(latestSession?.uploaded_at).toLocaleDateString()}
+              </>
+            )}
           </p>
         </div>
-        <button
-          onClick={() => navigate('/upload')}
-          className="inline-flex items-center gap-2 h-8 rounded-md border border-border bg-card px-3 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-muted-foreground transition-colors"
-        >
-          New Upload
-        </button>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KpiCard loading={loading} label="Orders Processed" value={summary?.total_orders} icon={FileText} />
         <KpiCard loading={loading} label="Payments Processed" value={summary?.total_payments} icon={CheckCircle2} variant="success" />
         <KpiCard
@@ -176,7 +277,7 @@ export default function DashboardPage() {
           label="Discrepancies Found"
           value={summary?.total_discrepancies}
           icon={AlertTriangle}
-          variant={summary?.total_discrepancies > 0 ? 'danger' : 'success'}
+          variant={summary?.total_discrepancies > 0 ? 'warning' : 'success'}
         />
         <KpiCard
           loading={loading}
@@ -188,99 +289,57 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Severity breakdown + type breakdown */}
-      <div className="grid grid-cols-3 gap-6">
-        {/* Severity */}
-        <Card className="bg-card border-border col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold">Severity Distribution</CardTitle>
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Severity Pie Chart */}
+        <Card className="bg-card border-border lg:col-span-1 flex flex-col shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-bold">Severity Distribution</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="flex-1 flex flex-col justify-center min-h-[300px]">
             {loading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
+              <div className="flex items-center justify-center h-full">
+                <Skeleton className="size-48 rounded-full" />
+              </div>
+            ) : summary?.total_discrepancies === 0 ? (
+              <div className="text-center text-muted-foreground text-sm flex flex-col items-center">
+                <CheckCircle2 className="size-8 text-green-400 mb-2 opacity-50" />
+                No discrepancies found
               </div>
             ) : (
-              <>
-                <SeverityBar counts={summary?.severity_breakdown} />
-                {[
-                  { key: 'HIGH',   label: 'High',   cls: 'dot-high',   badge: 'badge-high' },
-                  { key: 'MEDIUM', label: 'Medium', cls: 'dot-medium', badge: 'badge-medium' },
-                  { key: 'LOW',    label: 'Low',    cls: 'dot-low',    badge: 'badge-low' },
-                ].map(({ key, label, cls, badge }) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={cn('size-2 rounded-full', cls)} />
-                      <span className="text-sm text-muted-foreground">{label}</span>
-                    </div>
-                    <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', badge)}>
-                      {summary?.severity_breakdown?.[key] ?? 0}
-                    </span>
-                  </div>
-                ))}
-              </>
+              <div className="relative h-64 w-full">
+                <Pie data={pieData} options={pieOptions} />
+              </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Type breakdown */}
-        <Card className="bg-card border-border col-span-2">
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold">Discrepancy Types</CardTitle>
-            {latestSession && (
+        {/* Discrepancy Types Bar Chart */}
+        <Card className="bg-card border-border lg:col-span-2 flex flex-col shadow-sm hover:shadow-md transition-shadow">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-base font-bold">Risk by Discrepancy Type</CardTitle>
+            {latestSession && summary?.total_discrepancies > 0 && (
               <button
                 onClick={() => navigate(`/discrepancies/${latestSession.id}`)}
-                className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors bg-primary/10 px-3 py-1.5 rounded-full"
               >
-                View all <ArrowRight className="size-3" />
+                View Details <ArrowRight className="size-3" />
               </button>
             )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 min-h-[300px]">
             {loading ? (
-              <div className="space-y-2">
-                {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-8 w-full" />)}
+              <div className="space-y-4 h-full flex flex-col justify-end">
+                <Skeleton className="h-4/5 w-full rounded-t-md" />
               </div>
             ) : typeBreakdown.length === 0 ? (
-              <div className="flex items-center gap-2 text-sm text-green-400 py-4">
-                <CheckCircle2 className="size-4" />
-                No discrepancies found — books are balanced!
+              <div className="flex items-center justify-center h-full text-sm text-green-400 font-medium">
+                <CheckCircle2 className="size-5 mr-2" />
+                Books are perfectly balanced!
               </div>
             ) : (
-              <div className="space-y-1">
-                {typeBreakdown.map(([type, data]) => {
-                  const topSev = data.severities?.HIGH ? 'HIGH' : data.severities?.MEDIUM ? 'MEDIUM' : 'LOW'
-                  return (
-                    <div
-                      key={type}
-                      className="flex items-center justify-between py-2 hover:bg-accent/50 rounded-md px-2 cursor-pointer transition-colors"
-                      onClick={() => navigate(`/discrepancies/${latestSession?.id}?type=${type}`)}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className={cn(
-                          'size-1.5 shrink-0 rounded-full',
-                          topSev === 'HIGH' ? 'dot-high' : topSev === 'MEDIUM' ? 'dot-medium' : 'dot-low'
-                        )} />
-                        <span className="text-sm text-foreground truncate">
-                          {TYPE_LABELS[type] || type}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-xs text-muted-foreground tabular">
-                          ${data.total_risk.toFixed(2)}
-                        </span>
-                        <span className={cn(
-                          'rounded-full px-2 py-0.5 text-xs font-semibold',
-                          topSev === 'HIGH' ? 'badge-high' : topSev === 'MEDIUM' ? 'badge-medium' : 'badge-low'
-                        )}>
-                          {data.count}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
+              <div className="relative h-[280px] w-full mt-4">
+                <Bar data={barData} options={barOptions} />
               </div>
             )}
           </CardContent>

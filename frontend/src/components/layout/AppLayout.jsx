@@ -5,7 +5,8 @@ import {
   Upload,
   AlertTriangle,
   Activity,
-  ChevronRight,
+  HelpCircle,
+  Plus
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -34,6 +35,8 @@ function SidebarLink({ to, icon: Icon, label }) {
 }
 
 export default function AppLayout() {
+  const navigate = useNavigate()
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* ── Sidebar ─────────────────────────────────────────── */}
@@ -71,7 +74,28 @@ export default function AppLayout() {
       </aside>
 
       {/* ── Main content ────────────────────────────────────── */}
-      <main className="flex flex-1 flex-col overflow-hidden">
+      <main className="flex flex-1 flex-col overflow-hidden relative">
+        {/* Top Navbar */}
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/50 backdrop-blur-sm px-6 sticky top-0 z-10">
+          <div className="flex items-center gap-4">
+            <h2 className="text-sm font-medium text-foreground capitalize">
+              {/* Route-based title could go here, for now it's just a spacer or breadcrumb area */}
+            </h2>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/upload')}
+              className="inline-flex items-center gap-1.5 h-8 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-all shadow-sm"
+            >
+              <Plus className="size-3.5" />
+              New Upload
+            </button>
+            <button className="inline-flex items-center justify-center size-8 rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+              <HelpCircle className="size-4" />
+            </button>
+          </div>
+        </header>
+
         <div className="flex-1 overflow-y-auto">
           <Outlet />
         </div>
