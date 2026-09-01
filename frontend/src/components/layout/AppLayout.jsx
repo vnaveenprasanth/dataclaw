@@ -21,14 +21,14 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/runs',      icon: List,            label: 'Runs' },
-  { to: '/upload',    icon: Upload,          label: 'Upload Data' },
+  { to: '/runs', icon: List, label: 'Runs' },
+  { to: '/upload', icon: Upload, label: 'Upload Data' },
 ]
 
 const PAGE_TITLES = {
   '/dashboard': 'Dashboard',
-  '/runs':      'Reconciliation Runs',
-  '/upload':    'Upload Data',
+  '/runs': 'Reconciliation Runs',
+  '/upload': 'Upload Data',
 }
 
 const INFO_SECTIONS = [
@@ -100,7 +100,7 @@ function InfoModal({ open, onClose }) {
           </div>
           <button
             onClick={onClose}
-            className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
           >
             <X className="size-4" />
           </button>
@@ -174,8 +174,8 @@ export default function AppLayout() {
         <aside className="flex w-58 shrink-0 flex-col border-r border-border bg-card" style={{ width: '232px' }}>
           {/* Logo / Brand */}
           <div className="flex h-14 items-center gap-3 border-b border-border px-4">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-primary shadow-[0_0_12px_rgba(59,130,246,0.4)]">
-              <Activity className="size-4 text-primary-foreground" />
+            <div className="flex size-8 items-center justify-center rounded-lg bg-primary shadow-[0_0_12px_rgba(59,130,246,0.4)] overflow-hidden p-1">
+              <img src="/favicon.png" alt="DATAClaw Logo" className="size-full object-contain" />
             </div>
             <div className="flex flex-col leading-none">
               <span className="text-base font-extrabold tracking-tight text-foreground">
@@ -195,7 +195,7 @@ export default function AppLayout() {
 
           {/* User */}
           <div className="border-t border-border p-3">
-            <div className="flex items-center gap-2.5 rounded-md p-2 hover:bg-accent transition-colors cursor-default">
+            <div className="flex items-center gap-2.5 rounded-md p-2 hover:bg-accent transition-colors cursor-pointer">
               <UserButton
                 appearance={{
                   elements: { avatarBox: 'size-7' },
@@ -223,7 +223,7 @@ export default function AppLayout() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => navigate('/upload')}
-                className="inline-flex items-center gap-1.5 h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-all shadow-sm hover:shadow-md"
+                className="inline-flex items-center gap-1.5 h-8 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-all shadow-sm hover:shadow-md cursor-pointer"
               >
                 <Plus className="size-3.5" />
                 New Run
@@ -231,7 +231,7 @@ export default function AppLayout() {
               <button
                 onClick={() => setInfoOpen(true)}
                 title="Help & Features"
-                className="inline-flex items-center justify-center size-8 rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                className="inline-flex items-center justify-center size-8 rounded-md border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-colors cursor-pointer"
               >
                 <HelpCircle className="size-4" />
               </button>

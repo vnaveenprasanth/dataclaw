@@ -172,7 +172,7 @@ export default function UploadPage() {
             </div>
             <button
               onClick={() => navigate('/runs')}
-              className="w-full inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 shadow-md hover:shadow-lg"
+              className="w-full inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 shadow-md hover:shadow-lg cursor-pointer"
             >
               View Full Report <ArrowRight className="size-4" />
             </button>
@@ -288,7 +288,7 @@ export default function UploadPage() {
           className={cn(
             'w-full inline-flex h-12 items-center justify-center gap-2.5 rounded-xl text-sm font-semibold transition-all duration-200',
             canSubmit
-              ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg hover:-translate-y-0.5'
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
               : 'bg-muted text-muted-foreground cursor-not-allowed'
           )}
         >
