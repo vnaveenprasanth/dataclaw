@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+.env
+.env.*
+!.env.example
+migrations/versions/
+*.db
+*.sqlite
+.pytest_cache/
+htmlcov/
+.coverage

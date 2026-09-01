@@ -4,11 +4,11 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:   # allow manual trigger from Actions tab
+  workflow_dispatch:
 
 concurrency:
   group: production-deploy
-  cancel-in-progress: false   # never cancel an in-flight deploy
+  cancel-in-progress: false
 
 jobs:
   # ── 1. Test Backend ────────────────────────────────────────────────────────
@@ -61,10 +61,50 @@ jobs:
           cd backend
           python -m pytest tests/ -v --tb=short
 
-  # ── 2. Build Frontend ──────────────────────────────────────────────────────
+  # ── 2. Build & Push Docker Image ───────────────────────────────────────────
+  build-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+    needs: test-backend
+
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/dataclaw-backend
+          tags: |
+            type=sha,prefix=,format=short
+            type=raw,value=latest
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/dataclaw-backend:latest
+          cache-to: type=inline
+
+  # ── 3. Build Frontend ──────────────────────────────────────────────────────
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
+    needs: test-backend
 
     steps:
       - name: Checkout code
@@ -84,7 +124,6 @@ jobs:
 
       - name: Build Vite bundle
         env:
-          # Inject the production Clerk publishable key at build time
           VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
         run: |
           cd frontend
@@ -97,11 +136,11 @@ jobs:
           path: frontend/dist/
           retention-days: 1
 
-  # ── 3. Deploy to EC2 ───────────────────────────────────────────────────────
+  # ── 4. Deploy to EC2 ───────────────────────────────────────────────────────
   deploy:
     name: Deploy to EC2
     runs-on: ubuntu-latest
-    needs: [test-backend, build-frontend]
+    needs: [build-push, build-frontend]
 
     steps:
       - name: Checkout code
@@ -120,18 +159,6 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Sync backend code to EC2
-        run: |
-          rsync -az --delete \
-            --exclude='__pycache__' \
-            --exclude='*.pyc' \
-            --exclude='.env' \
-            --exclude='venv/' \
-            --exclude='migrations/' \
-            -e "ssh -i ~/.ssh/deploy_key" \
-            backend/ \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/dataclaw/backend/
-
       - name: Sync frontend dist to EC2
         run: |
           rsync -az --delete \
@@ -139,36 +166,50 @@ jobs:
             frontend/dist/ \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/dataclaw/frontend/dist/
 
-      - name: Sync deploy configs to EC2
+      - name: Sync migrations to EC2
         run: |
           rsync -az \
+            --exclude='__pycache__' \
             -e "ssh -i ~/.ssh/deploy_key" \
-            deploy/ \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/dataclaw/deploy/
+            backend/migrations/ \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/dataclaw/migrations/
 
-      - name: Install Python deps & run migrations on EC2
+      - name: Pull new image & run DB migrations on EC2
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} bash << 'ENDSSH'
             set -e
-            cd /var/www/dataclaw/backend
 
-            # Create / update virtualenv
-            python3 -m venv venv
-            source venv/bin/activate
+            # Pull the latest backend image
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/dataclaw-backend:latest
 
-            # Install / upgrade packages
-            pip install --quiet --upgrade pip
-            pip install --quiet -r requirements.txt
+            # Run flask db upgrade inside a temporary container
+            docker run --rm \
+              --env-file /var/www/dataclaw/backend/.env \
+              --network host \
+              ${{ secrets.DOCKERHUB_USERNAME }}/dataclaw-backend:latest \
+              flask db upgrade
+          ENDSSH
 
-            # Run DB migrations (flask-migrate)
-            export $(grep -v '^#' .env | xargs)
-            flask db upgrade
-          EOF
-
-      - name: Restart Gunicorn service
+      - name: Restart backend container
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-            "sudo systemctl restart dataclaw && sudo systemctl status dataclaw --no-pager"
+          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} bash << 'ENDSSH'
+            set -e
+
+            # Stop and remove old container if running
+            docker stop dataclaw-backend 2>/dev/null || true
+            docker rm dataclaw-backend 2>/dev/null || true
+
+            # Start fresh container
+            docker run -d \
+              --name dataclaw-backend \
+              --restart unless-stopped \
+              --env-file /var/www/dataclaw/backend/.env \
+              --network host \
+              ${{ secrets.DOCKERHUB_USERNAME }}/dataclaw-backend:latest
+
+            # Remove dangling images to save disk space
+            docker image prune -f
+          ENDSSH
 
       - name: Reload Nginx
         run: |
@@ -177,7 +218,7 @@ jobs:
 
       - name: Health check
         run: |
-          sleep 5
+          sleep 8
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
             https://${{ secrets.DOMAIN }}/api/health)
           if [ "$STATUS" != "200" ]; then
