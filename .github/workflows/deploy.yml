@@ -213,7 +213,7 @@ jobs:
         run: |
           sleep 8
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-            https://${{ secrets.DOMAIN }}/api/health)
+            https://${{ secrets.DOMAIN }}/health)
           if [ "$STATUS" != "200" ]; then
             echo "Health check FAILED -- status $STATUS"
             exit 1
