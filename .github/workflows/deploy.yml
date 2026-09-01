@@ -1,0 +1,187 @@
+name: Deploy DATAClaw to EC2
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:   # allow manual trigger from Actions tab
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false   # never cancel an in-flight deploy
+
+jobs:
+  # ── 1. Test Backend ────────────────────────────────────────────────────────
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: test_user
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: test_dataclaw
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          FLASK_ENV: testing
+          SECRET_KEY: ci-test-secret-key
+          DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_dataclaw
+          CLERK_PEM_PUBLIC_KEY: ""
+          CLERK_PERMITTED_ORIGINS: http://localhost:5173
+          FRONTEND_URL: http://localhost:5173
+          GEMINI_API_KEY: ""
+          LLM_FALLBACK_ENABLED: "false"
+        run: |
+          cd backend
+          python -m pytest tests/ -v --tb=short
+
+  # ── 2. Build Frontend ──────────────────────────────────────────────────────
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build Vite bundle
+        env:
+          # Inject the production Clerk publishable key at build time
+          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
+
+  # ── 3. Deploy to EC2 ───────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    needs: [test-backend, build-frontend]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Sync backend code to EC2
+        run: |
+          rsync -az --delete \
+            --exclude='__pycache__' \
+            --exclude='*.pyc' \
+            --exclude='.env' \
+            --exclude='venv/' \
+            --exclude='migrations/' \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            backend/ \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/dataclaw/backend/
+
+      - name: Sync frontend dist to EC2
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            frontend/dist/ \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/dataclaw/frontend/dist/
+
+      - name: Sync deploy configs to EC2
+        run: |
+          rsync -az \
+            -e "ssh -i ~/.ssh/deploy_key" \
+            deploy/ \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/dataclaw/deploy/
+
+      - name: Install Python deps & run migrations on EC2
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            set -e
+            cd /var/www/dataclaw/backend
+
+            # Create / update virtualenv
+            python3 -m venv venv
+            source venv/bin/activate
+
+            # Install / upgrade packages
+            pip install --quiet --upgrade pip
+            pip install --quiet -r requirements.txt
+
+            # Run DB migrations (flask-migrate)
+            export $(grep -v '^#' .env | xargs)
+            flask db upgrade
+          EOF
+
+      - name: Restart Gunicorn service
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "sudo systemctl restart dataclaw && sudo systemctl status dataclaw --no-pager"
+
+      - name: Reload Nginx
+        run: |
+          ssh -i ~/.ssh/deploy_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "sudo nginx -t && sudo systemctl reload nginx"
+
+      - name: Health check
+        run: |
+          sleep 5
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://${{ secrets.DOMAIN }}/api/health)
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check FAILED -- status $STATUS"
+            exit 1
+          fi
+          echo "Health check PASSED -- status $STATUS"
