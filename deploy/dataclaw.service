@@ -1,0 +1,25 @@
+[Unit]
+Description=DATAClaw Gunicorn WSGI server
+After=network.target
+
+[Service]
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/var/www/dataclaw/backend
+Environment="FLASK_ENV=production"
+EnvironmentFile=/var/www/dataclaw/backend/.env
+ExecStart=/var/www/dataclaw/backend/venv/bin/gunicorn \
+    --workers 2 \
+    --threads 2 \
+    --worker-class gthread \
+    --bind 127.0.0.1:5000 \
+    --timeout 120 \
+    --access-logfile /var/log/dataclaw/access.log \
+    --error-logfile /var/log/dataclaw/error.log \
+    run:app
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
