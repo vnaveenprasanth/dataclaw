@@ -7,7 +7,6 @@ venv/
 .env
 .env.*
 !.env.example
-migrations/versions/
 *.db
 *.sqlite
 .pytest_cache/

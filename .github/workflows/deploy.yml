@@ -166,13 +166,6 @@ jobs:
             frontend/dist/ \
             ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/dataclaw/frontend/dist/
 
-      - name: Sync migrations to EC2
-        run: |
-          rsync -az \
-            --exclude='__pycache__' \
-            -e "ssh -i ~/.ssh/deploy_key" \
-            backend/migrations/ \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/var/www/dataclaw/migrations/
 
       - name: Pull new image & run DB migrations on EC2
         run: |
