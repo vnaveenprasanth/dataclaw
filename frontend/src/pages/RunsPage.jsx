@@ -98,6 +98,13 @@ export default function RunsPage() {
     },
   })
 
+  // Auto-select latest session on load
+  useEffect(() => {
+    if (sessions?.length > 0 && !activeSessionId) {
+      setActiveSessionId(sessions[0].id)
+    }
+  }, [sessions, activeSessionId])
+
   // Fetch Discrepancies
   const { data: discData, isLoading: discLoading, isFetching: discFetching } = useQuery({
     queryKey: ['discrepancies', activeSessionId, page, perPage, debouncedSearch, severityFilter, typeFilter],
@@ -148,17 +155,17 @@ export default function RunsPage() {
           <CardDescription>View your past upload sessions and access their detailed discrepancy reports.</CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-0">
-          <div className="rounded-md border border-border overflow-hidden">
+          <div className="rounded-md border-2 border-border/60 overflow-hidden shadow-sm">
             <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
-                <TableHead className="w-[80px]">Run ID</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Orders File</TableHead>
-                <TableHead>Payments File</TableHead>
-                <TableHead>Orders</TableHead>
-                <TableHead>Payments</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="w-[100px]">Run ID</TableHead>
+                <TableHead className="w-[200px]">Date</TableHead>
+                <TableHead className="w-[200px]">Orders File</TableHead>
+                <TableHead className="w-[200px]">Payments File</TableHead>
+                <TableHead className="w-[120px]">Orders</TableHead>
+                <TableHead className="w-[120px]">Payments</TableHead>
+                <TableHead className="w-[120px]">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -193,10 +200,10 @@ export default function RunsPage() {
                       <TableCell className="text-muted-foreground whitespace-nowrap">
                         {new Date(session.uploaded_at).toLocaleString()}
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={session.orders_filename}>
+                      <TableCell className="truncate" title={session.orders_filename}>
                         {session.orders_filename}
                       </TableCell>
-                      <TableCell className="max-w-[200px] truncate" title={session.payments_filename}>
+                      <TableCell className="truncate" title={session.payments_filename}>
                         {session.payments_filename}
                       </TableCell>
                       <TableCell className="tabular-nums">{session.orders_count}</TableCell>
@@ -306,15 +313,15 @@ export default function RunsPage() {
           </CardHeader>
           
           <CardContent className="p-4 sm:p-6">
-            <div className="rounded-md border border-border overflow-hidden">
+            <div className="rounded-md border-2 border-border/60 overflow-hidden shadow-sm">
               <Table>
               <TableHeader className="bg-muted/40">
                 <TableRow>
-                  <TableHead className="w-[120px]">Severity</TableHead>
-                  <TableHead>Type</TableHead>
+                  <TableHead className="w-[140px]">Severity</TableHead>
+                  <TableHead className="w-[200px]">Type</TableHead>
                   <TableHead>Order ID</TableHead>
                   <TableHead>Transaction</TableHead>
-                  <TableHead>Risk Amt</TableHead>
+                  <TableHead className="w-[140px]">Risk Amt</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

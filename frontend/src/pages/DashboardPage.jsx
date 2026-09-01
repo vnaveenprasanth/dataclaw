@@ -253,7 +253,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6 max-w-[1600px] mx-auto">
+    <div className="flex flex-col gap-6 p-4 md:p-6 max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
@@ -262,7 +262,7 @@ export default function DashboardPage() {
             {loading ? 'Loading session details...' : (
               <>
                 <Activity className="size-3.5" />
-                Session #{latestSession?.id} · Processed {new Date(latestSession?.uploaded_at).toLocaleDateString()}
+                Showing Latest Run (Session #{latestSession?.id}) · Processed {new Date(latestSession?.uploaded_at).toLocaleDateString()}
               </>
             )}
           </p>
