@@ -12,7 +12,7 @@ backend/           Flask + SQLAlchemy + PostgreSQL (Supabase)
 deploy/            Nginx + Gunicorn (EC2 t2.small)
 ```
 
-**Authentication**: Clerk (JWT RS256 verified on every backend request)  
+**Authentication**: Clerk 
 **Database**: Supabase PostgreSQL — no `users` table; Clerk owns identity  
 **LLM**: Gemini 2.5-flash (primary) → Gemini 2.0-flash → GPT-4o-mini (fallback)
 
