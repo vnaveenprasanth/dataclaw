@@ -6,7 +6,6 @@ POST /api/llm/summarize             — executive summary of a session
 
 from flask import Blueprint, jsonify, request
 import google.api_core.exceptions as google_exc
-import openai as openai_exc
 
 from app import db
 from app.clerk_auth import clerk_required
@@ -34,13 +33,9 @@ def explain(result_id: int, clerk_user_id: str):
     try:
         explanation_dict, provider = get_manager().explain_discrepancy(result.to_dict())
     except google_exc.APIError as e:
-        return jsonify({"ok": False, "error": "LLM service error", "detail": str(e)}), 503
-    except openai_exc.APITimeoutError:
-        return jsonify({"ok": False, "error": "LLM timed out — please retry"}), 503
-    except openai_exc.RateLimitError:
-        return jsonify({"ok": False, "error": "LLM rate limit — try again shortly"}), 429
-    except RuntimeError as e:
-        return jsonify({"ok": False, "error": str(e)}), 503
+        return jsonify({"error": "LLM validation failed", "details": str(e)}), 422
+    except google_exc.ResourceExhausted:
+        return jsonify({"error": "LLM quota exceeded"}), 429
     except Exception as e:
         return jsonify({"ok": False, "error": "Internal server error"}), 500
 
@@ -94,12 +89,10 @@ def summarize(clerk_user_id: str):
     try:
         summary_dict, provider = get_manager().summarize_all([r.to_dict() for r in results])
     except google_exc.APIError as e:
-        return jsonify({"ok": False, "error": "LLM service error", "detail": str(e)}), 503
-    except openai_exc.RateLimitError:
-        return jsonify({"ok": False, "error": "LLM rate limit — try again shortly"}), 429
-    except RuntimeError as e:
-        return jsonify({"ok": False, "error": str(e)}), 503
-    except Exception:
+        return jsonify({"error": "LLM validation failed", "details": str(e)}), 422
+    except google_exc.ResourceExhausted:
+        return jsonify({"error": "LLM quota exceeded"}), 429
+    except Exception as e:
         return jsonify({"ok": False, "error": "Internal server error"}), 500
 
     return jsonify({"ok": True, "summary": summary_dict, "provider": provider})
