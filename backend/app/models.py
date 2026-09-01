@@ -165,3 +165,39 @@ class LLMExplanation(db.Model):
             "is_partial": self.is_partial,
             "created_at": self.created_at.isoformat(),
         }
+
+
+class LLMSessionSummary(db.Model):
+    """Cached AI executive summary for a whole upload session."""
+    __tablename__ = "llm_session_summaries"
+
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey("upload_sessions.id"), nullable=False, unique=True)
+    clerk_user_id = db.Column(db.String(64), nullable=False, index=True)
+
+    provider = db.Column(db.String(20))
+    model_used = db.Column(db.String(60))
+
+    headline = db.Column(db.Text)
+    total_at_risk_usd = db.Column(db.Numeric(12, 2))
+    key_findings = db.Column(db.JSON)           # list[str]
+    top_priority = db.Column(db.Text)
+    recommended_actions = db.Column(db.JSON)    # list[str]
+    overall_severity = db.Column(db.String(10)) # HIGH | MEDIUM | LOW
+
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        return {
+            "headline": self.headline,
+            "total_at_risk_usd": float(self.total_at_risk_usd) if self.total_at_risk_usd is not None else None,
+            "key_findings": self.key_findings or [],
+            "top_priority": self.top_priority,
+            "recommended_actions": self.recommended_actions or [],
+            "overall_severity": self.overall_severity,
+            "provider": self.provider,
+            "model_used": self.model_used,
+            "created_at": self.created_at.isoformat(),
+            "cached": True,
+        }
+

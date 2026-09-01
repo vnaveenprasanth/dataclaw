@@ -8,7 +8,7 @@ from sqlalchemy import func
 
 from app import db
 from app.clerk_auth import clerk_required
-from app.models import UploadSession, ReconciliationResult, LLMExplanation
+from app.models import UploadSession, ReconciliationResult, LLMExplanation, Order, Payment
 
 api_bp = Blueprint("api", __name__, url_prefix="/api")
 
@@ -42,6 +42,16 @@ def dashboard_summary(session_id: int, clerk_user_id: str):
     ).all()
 
     total_risk = sum(float(r.risk_amount or 0) for r in results)
+    total_in_dispute = sum(abs(float(r.difference or 0)) for r in results)
+
+    # Total reconciled value = sum of all order net_amounts in this session
+    reconciled_row = db.session.query(
+        func.sum(Order.net_amount)
+    ).filter(
+        Order.session_id == session_id,
+        Order.clerk_user_id == clerk_user_id
+    ).scalar()
+    total_reconciled = float(reconciled_row or 0)
 
     # Breakdown by type
     type_breakdown: dict[str, dict] = {}
@@ -66,6 +76,8 @@ def dashboard_summary(session_id: int, clerk_user_id: str):
         "total_payments": session.payments_count or 0,
         "total_discrepancies": len(results),
         "total_at_risk": round(total_risk, 2),
+        "total_in_dispute": round(total_in_dispute, 2),
+        "total_reconciled_value": round(total_reconciled, 2),
         "type_breakdown": type_breakdown,
         "severity_breakdown": severity_counts,
     })
@@ -76,6 +88,7 @@ def dashboard_summary(session_id: int, clerk_user_id: str):
 def list_discrepancies(session_id: int, clerk_user_id: str):
     """
     Filterable, searchable, paginated discrepancy list.
+    Each item is enriched with full Order and Payment data for the Sheet detail view.
 
     Query params:
       - type:     filter by discrepancy_type (exact)
@@ -132,11 +145,38 @@ def list_discrepancies(session_id: int, clerk_user_id: str):
     per_page = min(200, max(1, int(request.args.get("per_page", 50))))
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
+    # Pre-fetch related Order and Payment rows for the enriched response
+    order_ids = [r.order_id for r in pagination.items if r.order_id]
+    txn_refs = [r.transaction_ref for r in pagination.items if r.transaction_ref]
+
+    orders_map: dict[str, dict] = {}
+    if order_ids:
+        for o in Order.query.filter(
+            Order.session_id == session_id,
+            Order.clerk_user_id == clerk_user_id,
+            Order.order_id.in_(order_ids),
+        ).all():
+            orders_map[o.order_id] = o.to_dict()
+
+    payments_map: dict[str, dict] = {}
+    if txn_refs:
+        for p in Payment.query.filter(
+            Payment.session_id == session_id,
+            Payment.clerk_user_id == clerk_user_id,
+            Payment.transaction_ref.in_(txn_refs),
+        ).all():
+            payments_map[p.transaction_ref] = p.to_dict()
+
     items = []
     for r in pagination.items:
         d = r.to_dict()
         if r.explanation:
             d["explanation"] = r.explanation.to_dict()
+        # Enrich with full source rows
+        if r.order_id and r.order_id in orders_map:
+            d["order_detail"] = orders_map[r.order_id]
+        if r.transaction_ref and r.transaction_ref in payments_map:
+            d["payment_detail"] = payments_map[r.transaction_ref]
         items.append(d)
 
     return jsonify({
