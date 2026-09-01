@@ -9,7 +9,7 @@ A production-grade web application that ingests order and payment CSV exports, d
 ```
 frontend/          React + Vite + shadcn/ui + Clerk
 backend/           Flask + SQLAlchemy + PostgreSQL (Supabase)
-deploy/            Nginx + Gunicorn (EC2 t2.micro)
+deploy/            Nginx + Gunicorn (EC2 t2.small)
 ```
 
 **Authentication**: Clerk (JWT RS256 verified on every backend request)  
