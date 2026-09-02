@@ -461,7 +461,7 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
 export default function RunsPage() {
   const { api } = useApi()
   const location = useLocation()
-  const [activeSessionId, setActiveSessionId] = useState(null)
+  const [activeSessionId, setActiveSessionId] = useState(() => location.state?.sessionId || null)
   const [showAiModal, setShowAiModal] = useState(false)
   const [selectedRow, setSelectedRow] = useState(null)
 
@@ -472,13 +472,11 @@ export default function RunsPage() {
   const [severityFilter, setSeverityFilter] = useState(()  => location.state?.severityFilter || '')
   const [typeFilter, setTypeFilter] = useState(() => location.state?.typeFilter || '')
 
-  // Deep-link from Dashboard: pre-select session + filters from navigation state
+  // Deep-link from Dashboard: clear navigation state so going back/forward doesn't re-apply filters
   useEffect(() => {
-    if (location.state?.sessionId) {
-      setActiveSessionId(location.state.sessionId)
+    if (location.state?.sessionId || location.state?.severityFilter || location.state?.typeFilter) {
+      window.history.replaceState({}, '')
     }
-    // Clear state so navigating away and back doesn't re-apply filters
-    window.history.replaceState({}, '')
   }, [])
 
   // Debounce search
