@@ -24,6 +24,8 @@ import {
   Hash,
   Banknote,
   BadgePercent,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import {
   Card,
@@ -69,9 +71,9 @@ const TYPE_LABELS = {
 }
 
 function SeverityIndicator({ severity }) {
-  if (severity === 'HIGH') return <div className="flex items-center gap-2"><div className="size-2 rounded-full bg-destructive" /><span className="text-sm font-medium">High</span></div>
-  if (severity === 'MEDIUM') return <div className="flex items-center gap-2"><div className="size-2 rounded-full bg-amber-500" /><span className="text-sm font-medium">Medium</span></div>
-  return <div className="flex items-center gap-2"><div className="size-2 rounded-full bg-green-500" /><span className="text-sm font-medium">Low</span></div>
+  if (severity === 'HIGH') return <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-red-500/10 border border-red-500/20"><div className="size-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" /><span className="text-[11px] font-bold text-red-500 uppercase tracking-wider">High</span></div>
+  if (severity === 'MEDIUM') return <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-yellow-500/10 border border-yellow-500/20"><div className="size-2 rounded-full bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.8)]" /><span className="text-[11px] font-bold text-yellow-500 uppercase tracking-wider">Medium</span></div>
+  return <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-green-500/10 border border-green-500/20"><div className="size-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]" /><span className="text-[11px] font-bold text-green-500 uppercase tracking-wider">Low</span></div>
 }
 
 function DetailRow({ icon: Icon, label, value, mono = false, highlight = false }) {
@@ -97,6 +99,7 @@ function DetailRow({ icon: Icon, label, value, mono = false, highlight = false }
 function RunAiSummary({ sessionId }) {
   const { api } = useApi()
   const [summary, setSummary] = useState(null)
+  const [isOpen, setIsOpen] = useState(true)
 
   // Try to load cached summary whenever session changes
   useEffect(() => {
@@ -140,7 +143,10 @@ function RunAiSummary({ sessionId }) {
 
   return (
     <Card className="border-border shadow-sm mb-4">
-      <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border py-4">
+      <CardHeader 
+        className="flex flex-row items-center justify-between pb-3 border-b border-border py-4 cursor-pointer hover:bg-muted/10 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
         <div className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
             <Sparkles className="size-4 text-primary" />
@@ -148,17 +154,17 @@ function RunAiSummary({ sessionId }) {
           <div>
             <div className="flex items-center gap-2">
               <CardTitle className="text-sm font-bold">AI Summary for this Run</CardTitle>
-              {summary?.cached && (
-                <Badge variant="outline" className="text-xs text-muted-foreground border-border">Cached</Badge>
-              )}
             </div>
             <CardDescription className="text-xs">On-demand analysis of all discrepancies</CardDescription>
           </div>
         </div>
+        <div className="flex items-center justify-center size-8 rounded-full hover:bg-muted">
+          {isOpen ? <ChevronUp className="size-5 text-muted-foreground" /> : <ChevronDown className="size-5 text-muted-foreground" />}
+        </div>
       </CardHeader>
 
-      {(summaryMutation.isPending || summary || summaryMutation.isError) && (
-        <CardContent className="pt-4">
+      {isOpen && (summaryMutation.isPending || summary || summaryMutation.isError) && (
+        <CardContent className="pt-4 animate-in fade-in slide-in-from-top-2 duration-200">
           {summaryMutation.isPending && (
             <div className="flex flex-col gap-2.5">
               <Skeleton className="h-3.5 w-3/4" />
@@ -228,10 +234,10 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
 
   const sev = row.severity
   const sevBanner = sev === 'HIGH'
-    ? 'bg-destructive/10 border-destructive/30 text-destructive'
+    ? 'bg-destructive/20 border-destructive/50 text-destructive shadow-sm'
     : sev === 'MEDIUM'
-    ? 'bg-amber-500/10 border-amber-500/30 text-amber-500'
-    : 'bg-green-500/10 border-green-500/30 text-green-500'
+    ? 'bg-amber-500/20 border-amber-500/50 text-amber-500 shadow-sm'
+    : 'bg-green-500/20 border-green-500/50 text-green-500 shadow-sm'
   const sevLabel = sev === 'HIGH' ? 'High Severity' : sev === 'MEDIUM' ? 'Medium Severity' : 'Low Severity'
 
   const orderDetail = row.order_detail || {}
@@ -247,9 +253,9 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
     : 'text-muted-foreground bg-muted/30 border-border'
 
   return (
-    <div className="flex-1 overflow-y-auto flex flex-col">
+    <div className="flex-1 overflow-y-auto flex flex-col bg-[#0b1120]">
       {/* Hero Banner */}
-      <div className={cn("px-6 py-5 border-b flex items-center justify-between gap-4", sevBanner)}>
+      <div className={cn("px-6 py-5 border-b-2 flex items-center justify-between gap-4", sevBanner)}>
         <div className="flex flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2">
@@ -272,7 +278,7 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
       <div className="flex flex-col gap-5 p-6">
         {/* Amount Delta Callout */}
         {(row.order_amount !== null || row.payment_amount !== null) && row.discrepancy_type !== 'MISSING_PAYMENT' && row.discrepancy_type !== 'PHANTOM_PAYMENT' && (
-          <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/30 border border-border">
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-muted/20 border-2 border-border/80 shadow-sm">
             <div className="flex-1 text-center">
               <p className="text-xs text-muted-foreground mb-1">Order Amount</p>
               <p className="text-xl font-bold text-foreground tabular-nums">${(row.order_amount || 0).toFixed(2)}</p>
@@ -296,8 +302,8 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
         {/* Detail Cards Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Order Details */}
-          <div className="rounded-lg border border-border bg-muted/10">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/20 rounded-t-lg">
+          <div className="rounded-lg border-2 border-border/80 bg-muted/5 shadow-sm">
+            <div className="flex items-center gap-2 px-4 py-3 border-b-2 border-border/80 bg-muted/20 rounded-t-sm">
               <Package className="size-4 text-primary" />
               <span className="text-sm font-bold text-foreground">Order Record</span>
             </div>
@@ -314,8 +320,8 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
           </div>
 
           {/* Payment Details */}
-          <div className="rounded-lg border border-border bg-muted/10">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/20 rounded-t-lg">
+          <div className="rounded-lg border-2 border-border/80 bg-muted/5 shadow-sm">
+            <div className="flex items-center gap-2 px-4 py-3 border-b-2 border-border/80 bg-muted/20 rounded-t-sm">
               <CreditCard className="size-4 text-primary" />
               <span className="text-sm font-bold text-foreground">Payment Record</span>
             </div>
@@ -532,9 +538,9 @@ export default function RunsPage() {
           <CardDescription>View your past upload sessions and access their detailed discrepancy reports.</CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-0">
-          <div className="rounded-md border-2 border-foreground/20 overflow-hidden shadow-sm">
+          <div className="rounded-md border-2 border-border/80 overflow-hidden shadow-md">
             <Table>
-              <TableHeader className="bg-muted/50">
+              <TableHeader className="bg-muted/50 uppercase text-xs font-bold tracking-wider">
                 <TableRow>
                   <TableHead className="w-[100px]">Run ID</TableHead>
                   <TableHead className="w-[200px]">Date</TableHead>
@@ -693,9 +699,9 @@ export default function RunsPage() {
             {/* Per-run AI Summary */}
             <RunAiSummary sessionId={activeSessionId} />
 
-            <div className="rounded-md border-2 border-foreground/20 overflow-hidden shadow-sm">
+            <div className="rounded-md border-2 border-border/80 overflow-hidden shadow-md">
               <Table>
-                <TableHeader className="bg-muted/40">
+                <TableHeader className="bg-muted/40 uppercase text-xs font-bold tracking-wider">
                   <TableRow>
                     <TableHead className="w-[140px]">Severity</TableHead>
                     <TableHead className="w-[200px]">Type</TableHead>

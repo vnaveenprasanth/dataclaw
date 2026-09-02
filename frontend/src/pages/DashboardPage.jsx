@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { useApi } from '@/lib/api'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertTriangle, CheckCircle2, DollarSign, FileText,
   ArrowRight, Activity, Scale, ShieldAlert, Sparkles, Loader2,
-  TrendingDown, ListChecks, Zap
+  TrendingDown, ListChecks, Zap, X
 } from 'lucide-react'
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription
@@ -148,9 +148,6 @@ function AiSummaryCard({ sessionId }) {
           <div>
             <div className="flex items-center gap-2">
               <CardTitle className="text-base font-bold">AI Executive Summary</CardTitle>
-              {summary?.cached && (
-                <Badge variant="outline" className="text-xs text-muted-foreground border-border">Cached</Badge>
-              )}
             </div>
             <CardDescription className="text-xs">LLM-generated overview of this reconciliation run</CardDescription>
           </div>
@@ -254,9 +251,38 @@ function AiSummaryCard({ sessionId }) {
   )
 }
 
+function AiSummaryModal({ sessionId, isOpen, onClose }) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.2 }}
+            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg shadow-2xl"
+          >
+            <div className="relative">
+              <button 
+                onClick={onClose}
+                className="absolute right-4 top-4 z-10 flex items-center justify-center size-8 rounded-full bg-muted/50 hover:bg-muted text-foreground transition-colors"
+              >
+                <X className="size-4" />
+              </button>
+              <AiSummaryCard sessionId={sessionId} />
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  )
+}
+
 export default function DashboardPage() {
   const { api } = useApi()
   const navigate = useNavigate()
+  const [showAiModal, setShowAiModal] = useState(false)
 
   // Get latest session
   const { data: sessions, isLoading: sessionsLoading } = useQuery({
@@ -394,7 +420,7 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-6 p-4 md:p-6 max-w-[1600px] mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold text-foreground">Reconciliation Overview</h1>
           <p className="text-sm text-muted-foreground flex items-center gap-2">
@@ -406,6 +432,18 @@ export default function DashboardPage() {
             )}
           </p>
         </div>
+        {latestSession && !loading && (
+          <div className="relative group">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-blue-500 rounded-md blur opacity-30 group-hover:opacity-80 transition duration-500 group-hover:duration-200 animate-pulse"></div>
+            <Button 
+              onClick={() => setShowAiModal(true)}
+              className="relative bg-card text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground hover:border-transparent shadow-sm transition-all duration-300"
+            >
+              <Sparkles className="size-4 mr-2 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110" />
+              View AI Summary
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* KPI Cards — 6 columns on XL */}
@@ -463,7 +501,7 @@ export default function DashboardPage() {
               </button>
             )}
           </CardHeader>
-          <CardContent className="flex-1 min-h-[300px]">
+          <CardContent className="flex-1 min-h-[400px]">
             {loading ? (
               <div className="flex flex-col gap-4 h-full justify-end">
                 <Skeleton className="h-4/5 w-full rounded-t-md" />
@@ -474,7 +512,7 @@ export default function DashboardPage() {
                 Books are perfectly balanced!
               </div>
             ) : (
-              <div className="relative h-[280px] w-full mt-4">
+              <div className="relative h-[380px] w-full mt-4">
                 <Bar data={barData} options={barOptions} />
               </div>
             )}
@@ -486,7 +524,7 @@ export default function DashboardPage() {
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-bold">Severity Distribution</CardTitle>
           </CardHeader>
-          <CardContent className="flex-1 flex flex-col justify-center min-h-[300px]">
+          <CardContent className="flex-1 flex flex-col justify-center min-h-[400px]">
             {loading ? (
               <div className="flex items-center justify-center h-full">
                 <Skeleton className="size-48 rounded-full" />
@@ -497,7 +535,7 @@ export default function DashboardPage() {
                 No discrepancies found
               </div>
             ) : (
-              <div className="relative h-64 w-full">
+              <div className="relative h-[360px] w-full">
                 <Pie data={pieData} options={pieOptions} />
               </div>
             )}
@@ -505,10 +543,12 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* AI Executive Summary */}
-      {latestSession && !loading && (
-        <AiSummaryCard sessionId={latestSession.id} />
-      )}
+      {/* AI Modal */}
+      <AiSummaryModal 
+        sessionId={latestSession?.id} 
+        isOpen={showAiModal} 
+        onClose={() => setShowAiModal(false)} 
+      />
     </div>
   )
 }

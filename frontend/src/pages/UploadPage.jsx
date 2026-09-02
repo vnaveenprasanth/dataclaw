@@ -185,7 +185,7 @@ export default function UploadPage() {
   // ── Upload form ───────────────────────────────────────────────────────
   return (
     <div className="min-h-full flex items-start justify-center p-6 md:p-10">
-      <div className="w-full max-w-3xl">
+      <div className="w-full">
         {/* Hero header */}
         <motion.div
           initial={{ opacity: 0, y: -12 }}
