@@ -105,7 +105,7 @@ function RunAiSummaryModal({ sessionId, isOpen, onClose }) {
     if (!sessionId) return
     api.get(`/llm/summarize/${sessionId}`).then(({ data }) => {
       if (data.summary) setSummary(data.summary)
-    }).catch(() => {})
+    }).catch(() => { })
   }, [sessionId])
 
   const summaryMutation = useMutation({
@@ -120,7 +120,7 @@ function RunAiSummaryModal({ sessionId, isOpen, onClose }) {
 
   const sev = summary?.overall_severity
   const sevColor = sev === 'HIGH' ? 'text-red-500' : sev === 'MEDIUM' ? 'text-yellow-500' : 'text-green-500'
-  const sevBg   = sev === 'HIGH' ? 'bg-red-500/10 border-red-500/30' : sev === 'MEDIUM' ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-green-500/10 border-green-500/30'
+  const sevBg = sev === 'HIGH' ? 'bg-red-500/10 border-red-500/30' : sev === 'MEDIUM' ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-green-500/10 border-green-500/30'
 
   return (
     <AnimatePresence>
@@ -131,9 +131,9 @@ function RunAiSummaryModal({ sessionId, isOpen, onClose }) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
             transition={{ duration: 0.2 }}
-            className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-lg shadow-2xl relative"
+            className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg shadow-2xl relative"
           >
-            <button 
+            <button
               onClick={onClose}
               className="absolute right-4 top-4 z-10 flex items-center justify-center size-8 rounded-full bg-muted/50 hover:bg-muted text-foreground transition-colors"
             >
@@ -243,8 +243,8 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
   const sevBanner = sev === 'HIGH'
     ? 'bg-red-500/20 border-red-500/50 text-red-500 shadow-sm'
     : sev === 'MEDIUM'
-    ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-500 shadow-sm'
-    : 'bg-green-500/20 border-green-500/50 text-green-500 shadow-sm'
+      ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-500 shadow-sm'
+      : 'bg-green-500/20 border-green-500/50 text-green-500 shadow-sm'
   const sevLabel = sev === 'HIGH' ? 'High Severity' : sev === 'MEDIUM' ? 'Medium Severity' : 'Low Severity'
 
   const orderDetail = row.order_detail || {}
@@ -253,11 +253,11 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
 
   const urgencyColor = expl?.urgency === 'HIGH' ? 'text-destructive bg-destructive/10 border-destructive/30'
     : expl?.urgency === 'MEDIUM' ? 'text-amber-500 bg-amber-500/10 border-amber-500/30'
-    : 'text-green-500 bg-green-500/10 border-green-500/30'
+      : 'text-green-500 bg-green-500/10 border-green-500/30'
 
   const confColor = expl?.confidence === 'HIGH' ? 'text-green-500 bg-green-500/10 border-green-500/30'
     : expl?.confidence === 'MEDIUM' ? 'text-amber-500 bg-amber-500/10 border-amber-500/30'
-    : 'text-muted-foreground bg-muted/30 border-border'
+      : 'text-muted-foreground bg-muted/30 border-border'
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col bg-[#0b1120]">
@@ -675,6 +675,17 @@ export default function RunsPage() {
                     <Filter className="size-4 text-muted-foreground" />
                   </div>
                 </div>
+
+                <div className="relative group ml-1 sm:ml-2">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-blue-500 rounded-md blur opacity-30 group-hover:opacity-80 transition duration-500 group-hover:duration-200 animate-pulse"></div>
+                  <Button
+                    onClick={() => setShowAiModal(true)}
+                    className="relative bg-card text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground hover:border-transparent shadow-sm transition-all duration-300 h-10"
+                  >
+                    <Sparkles className="size-4 mr-2 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110" />
+                    AI Summary
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -704,19 +715,6 @@ export default function RunsPage() {
           </CardHeader>
 
           <CardContent className="p-4 sm:p-6">
-            <div className="flex justify-end mb-4">
-              <div className="relative group">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-blue-500 rounded-md blur opacity-30 group-hover:opacity-80 transition duration-500 group-hover:duration-200 animate-pulse"></div>
-                <Button 
-                  onClick={() => setShowAiModal(true)}
-                  className="relative bg-card text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground hover:border-transparent shadow-sm transition-all duration-300 h-10"
-                >
-                  <Sparkles className="size-4 mr-2 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110" />
-                  AI Summary
-                </Button>
-              </div>
-            </div>
-
             <div className="rounded-md border-2 border-border/80 overflow-hidden shadow-md">
               <Table>
                 <TableHeader className="bg-muted/40 uppercase text-xs font-bold tracking-wider">
@@ -810,10 +808,10 @@ export default function RunsPage() {
       )}
 
       {/* ── AI Summary Modal ─────────────────────────────────────── */}
-      <RunAiSummaryModal 
-        sessionId={activeSessionId} 
-        isOpen={showAiModal} 
-        onClose={() => setShowAiModal(false)} 
+      <RunAiSummaryModal
+        sessionId={activeSessionId}
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
       />
 
       {/* ── Discrepancy Detail Sheet ───────────────────────────────── */}
