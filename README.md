@@ -268,4 +268,4 @@ Gemini keys live only in `backend/.env` (gitignored), read by Flask at startup. 
 
 ## AI Tools Used
 
-Claude (via Antigravity IDE) was used extensively for: Flask blueprint scaffolding, SQLAlchemy model design, Pydantic schema writing, React component development, and design system iteration. All code was reviewed. The reconciliation logic, temperature choice (0.2), and tolerance choice (+/-$0.02) are deliberate decisions made by me and given as instruction to the LLM, not AI defaults.
+Claude + Gemini models (via Antigravity IDE) was used for: Flask blueprint scaffolding, SQLAlchemy model design, Pydantic schema writing, React component development, and design system iteration. All code was reviewed. The reconciliation logic, temperature choice (0.2), and tolerance choice (+/-$0.02) are deliberate decisions made by me and given as instruction to the LLM, not AI defaults.
