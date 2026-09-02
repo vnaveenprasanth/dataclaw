@@ -65,14 +65,38 @@ function ExplainerSheet({ result, open, onClose }) {
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent className="w-[420px] sm:w-[480px] bg-card border-border flex flex-col gap-0 p-0">
-        <SheetHeader className="p-6 border-b border-border">
-          <SheetTitle className="text-base font-semibold text-foreground">
-            AI Analysis
-          </SheetTitle>
-          <SheetDescription className="text-xs text-muted-foreground font-mono">
-            {result?.order_id} · {result?.discrepancy_type}
+        <div className="relative overflow-hidden border-b border-border/50 px-6 py-6">
+          <div className="pointer-events-none absolute -right-10 -top-10 z-0 size-40 rounded-full bg-primary/20 blur-[80px]" />
+          
+          <div className="relative z-10 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary shadow-sm">
+                <Sparkles className="size-5" />
+              </div>
+              <div className="flex flex-col">
+                <SheetTitle className="text-lg font-bold tracking-tight text-foreground">
+                  AI Analysis
+                </SheetTitle>
+              </div>
+            </div>
+          </div>
+          
+          <SheetDescription className="relative z-10 mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+            {result?.order_id && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-muted-foreground">Order:</span>
+                <span className="rounded border border-border/50 bg-muted/40 px-1.5 py-0.5 font-mono font-medium text-foreground">
+                  {result.order_id}
+                </span>
+              </div>
+            )}
+            {result?.discrepancy_type && (
+              <Badge variant="secondary" className="rounded font-mono text-[10px] uppercase">
+                {result.discrepancy_type}
+              </Badge>
+            )}
           </SheetDescription>
-        </SheetHeader>
+        </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {!expl && !isPending && (

@@ -263,22 +263,78 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
   return (
     <div className="flex-1 overflow-y-auto flex flex-col bg-[#0b1120]">
       {/* Hero Banner */}
-      <div className={cn("px-6 py-5 border-b-2 flex items-center justify-between gap-4", sevBanner)}>
-        <div className="flex flex-col gap-1.5">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="size-5" />
-              <SheetTitle className="text-xl font-bold text-foreground">
-                {TYPE_LABELS[row.discrepancy_type] || row.discrepancy_type}
-              </SheetTitle>
-              <Badge variant="outline" className={cn("font-bold border text-xs px-2.5 py-0.5 ml-1", sevBanner)}>
-                {sevLabel}
-              </Badge>
+      {/* Hero Banner */}
+      <div className="relative overflow-hidden border-b border-border/40 px-8 py-10 bg-zinc-950/50">
+        {/* Animated Background Mesh & Grids */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] z-0" />
+        
+        <div className={cn(
+          "pointer-events-none absolute -right-20 -top-20 z-0 h-[300px] w-[400px] rounded-full blur-[120px] opacity-20 mix-blend-screen",
+          sev === 'HIGH' ? 'bg-red-500' : sev === 'MEDIUM' ? 'bg-yellow-500' : 'bg-green-500'
+        )} />
+        
+        <div className="relative z-10 flex flex-col gap-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-5">
+              <div className={cn(
+                "relative flex size-14 shrink-0 items-center justify-center rounded-2xl border shadow-2xl",
+                sev === 'HIGH' ? 'border-red-500/30 bg-gradient-to-br from-red-500/20 to-red-500/5 text-red-500' :
+                sev === 'MEDIUM' ? 'border-yellow-500/30 bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 text-yellow-500' :
+                'border-green-500/30 bg-gradient-to-br from-green-500/20 to-green-500/5 text-green-500'
+              )}>
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/10 to-transparent opacity-50" />
+                <AlertTriangle className="size-7 drop-shadow-md" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <SheetTitle className="text-3xl font-extrabold tracking-tight text-white drop-shadow-sm">
+                  {TYPE_LABELS[row.discrepancy_type] || row.discrepancy_type}
+                </SheetTitle>
+              </div>
+            </div>
+            
+            <div className={cn(
+              "flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-widest shadow-[0_0_15px_-3px_var(--tw-shadow-color)]",
+              sev === 'HIGH' ? 'border-red-500/50 bg-red-500/10 text-red-500 shadow-red-500/20' :
+              sev === 'MEDIUM' ? 'border-yellow-500/50 bg-yellow-500/10 text-yellow-500 shadow-yellow-500/20' :
+              'border-green-500/50 bg-green-500/10 text-green-500 shadow-green-500/20'
+            )}>
+              <span className="relative flex size-2">
+                <span className={cn(
+                  "absolute inline-flex h-full w-full animate-ping rounded-full opacity-75",
+                  sev === 'HIGH' ? 'bg-red-500' : sev === 'MEDIUM' ? 'bg-yellow-500' : 'bg-green-500'
+                )}></span>
+                <span className={cn(
+                  "relative inline-flex size-2 rounded-full",
+                  sev === 'HIGH' ? 'bg-red-500' : sev === 'MEDIUM' ? 'bg-yellow-500' : 'bg-green-500'
+                )}></span>
+              </span>
+              {sevLabel}
             </div>
           </div>
-          <SheetDescription className="text-sm text-muted-foreground mt-0">
-            {row.order_id && <span className="font-mono mr-3">Order: {row.order_id}</span>}
-            {row.transaction_ref && <span className="font-mono">Txn: {row.transaction_ref}</span>}
+          
+          <SheetDescription className="relative z-10 flex flex-wrap items-center gap-4 mt-2">
+            {row.order_id && (
+              <div className="group flex items-center overflow-hidden rounded-lg border border-border/40 bg-zinc-950/50 shadow-sm backdrop-blur-sm transition-colors hover:border-border/80">
+                <div className="flex h-full items-center bg-zinc-900/80 px-3 py-2 text-xs font-medium text-muted-foreground border-r border-border/40">
+                  <Hash className="mr-1.5 size-3.5" />
+                  Order ID
+                </div>
+                <div className="px-3 py-2 font-mono text-sm font-semibold text-zinc-200">
+                  {row.order_id}
+                </div>
+              </div>
+            )}
+            {row.transaction_ref && (
+              <div className="group flex items-center overflow-hidden rounded-lg border border-border/40 bg-zinc-950/50 shadow-sm backdrop-blur-sm transition-colors hover:border-border/80">
+                <div className="flex h-full items-center bg-zinc-900/80 px-3 py-2 text-xs font-medium text-muted-foreground border-r border-border/40">
+                  <CreditCard className="mr-1.5 size-3.5" />
+                  Txn Ref
+                </div>
+                <div className="px-3 py-2 font-mono text-sm font-semibold text-zinc-200">
+                  {row.transaction_ref}
+                </div>
+              </div>
+            )}
           </SheetDescription>
         </div>
       </div>
