@@ -43,7 +43,7 @@ ChartJS.register(
 function KpiCard({ label, value, prefix = '', suffix = '', icon: Icon, variant = 'default', loading, subtext }) {
   const colorMap = {
     default:  'text-foreground',
-    danger:   'text-destructive',
+    danger:   'text-red-500',
     warning:  'text-amber-500',
     success:  'text-green-500',
     primary:  'text-primary',
@@ -51,7 +51,7 @@ function KpiCard({ label, value, prefix = '', suffix = '', icon: Icon, variant =
   }
   const iconBgMap = {
     default:  'bg-muted/60',
-    danger:   'bg-destructive/15',
+    danger:   'bg-red-500/15',
     warning:  'bg-amber-500/15',
     success:  'bg-green-500/15',
     primary:  'bg-primary/15',
@@ -78,7 +78,7 @@ function KpiCard({ label, value, prefix = '', suffix = '', icon: Icon, variant =
           <div className={cn('flex size-7 items-center justify-center rounded-md shrink-0', iconBgMap[variant])}>
             <Icon className={cn('size-3.5', colorMap[variant])} />
           </div>
-          <p className="text-sm font-bold text-foreground leading-tight">{label}</p>
+          <p className="text-xs uppercase tracking-wider font-bold text-foreground leading-tight">{label}</p>
         </div>
         {/* Value */}
         <motion.p
@@ -491,7 +491,7 @@ export default function DashboardPage() {
         {/* Discrepancy Types Bar Chart */}
         <Card className="bg-card border-border lg:col-span-2 flex flex-col shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-base font-bold">Risk by Discrepancy Type</CardTitle>
+            <CardTitle className="text-sm uppercase tracking-wider font-bold">Risk by Discrepancy Type</CardTitle>
             {latestSession && summary?.total_discrepancies > 0 && (
               <button
                 onClick={() => navigate(`/runs`)}
@@ -522,7 +522,7 @@ export default function DashboardPage() {
         {/* Severity Pie Chart */}
         <Card className="bg-card border-border lg:col-span-1 flex flex-col shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-bold">Severity Distribution</CardTitle>
+            <CardTitle className="text-sm uppercase tracking-wider font-bold">Severity Distribution</CardTitle>
           </CardHeader>
           <CardContent className="flex-1 flex flex-col justify-center min-h-[400px]">
             {loading ? (

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useApi } from '@/lib/api'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
   Filter,
@@ -95,13 +96,10 @@ function DetailRow({ icon: Icon, label, value, mono = false, highlight = false }
   )
 }
 
-// Per-run AI summary component
-function RunAiSummary({ sessionId }) {
+function RunAiSummaryModal({ sessionId, isOpen, onClose }) {
   const { api } = useApi()
   const [summary, setSummary] = useState(null)
-  const [isOpen, setIsOpen] = useState(true)
 
-  // Try to load cached summary whenever session changes
   useEffect(() => {
     setSummary(null)
     if (!sessionId) return
@@ -118,113 +116,122 @@ function RunAiSummary({ sessionId }) {
     onSuccess: (data) => setSummary(data.summary),
   })
 
-  const sev = summary?.overall_severity
-  const sevColor = sev === 'HIGH' ? 'text-destructive' : sev === 'MEDIUM' ? 'text-amber-500' : 'text-green-500'
-  const sevBg   = sev === 'HIGH' ? 'bg-destructive/10 border-destructive/30' : sev === 'MEDIUM' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-green-500/10 border-green-500/30'
+  if (!sessionId) return null
 
-  if (!summary && !summaryMutation.isPending && !summaryMutation.isError) {
-    return (
-      <div className="flex items-center justify-between p-3 mb-4 rounded-md border border-primary/20 bg-primary/5">
-        <div className="flex items-center gap-2">
-          <Sparkles className="size-4 text-primary" />
-          <span className="text-sm font-semibold text-foreground">AI Executive Summary</span>
-          <span className="text-xs text-muted-foreground hidden sm:inline-block">— Gemini-powered root cause analysis</span>
-        </div>
-        <Button
-          onClick={() => summaryMutation.mutate()}
-          size="sm"
-          className="h-8 cursor-pointer"
-        >
-          <Sparkles className="mr-2 size-3.5" />Generate
-        </Button>
-      </div>
-    )
-  }
+  const sev = summary?.overall_severity
+  const sevColor = sev === 'HIGH' ? 'text-red-500' : sev === 'MEDIUM' ? 'text-yellow-500' : 'text-green-500'
+  const sevBg   = sev === 'HIGH' ? 'bg-red-500/10 border-red-500/30' : sev === 'MEDIUM' ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-green-500/10 border-green-500/30'
 
   return (
-    <Card className="border-border shadow-sm mb-4">
-      <CardHeader 
-        className="flex flex-row items-center justify-between pb-3 border-b border-border py-4 cursor-pointer hover:bg-muted/10 transition-colors"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <div className="flex items-center gap-2">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
-            <Sparkles className="size-4 text-primary" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-sm font-bold">AI Summary for this Run</CardTitle>
-            </div>
-            <CardDescription className="text-xs">On-demand analysis of all discrepancies</CardDescription>
-          </div>
-        </div>
-        <div className="flex items-center justify-center size-8 rounded-full hover:bg-muted">
-          {isOpen ? <ChevronUp className="size-5 text-muted-foreground" /> : <ChevronDown className="size-5 text-muted-foreground" />}
-        </div>
-      </CardHeader>
-
-      {isOpen && (summaryMutation.isPending || summary || summaryMutation.isError) && (
-        <CardContent className="pt-4 animate-in fade-in slide-in-from-top-2 duration-200">
-          {summaryMutation.isPending && (
-            <div className="flex flex-col gap-2.5">
-              <Skeleton className="h-3.5 w-3/4" />
-              <Skeleton className="h-3.5 w-1/2" />
-              <Skeleton className="h-3.5 w-5/6" />
-            </div>
-          )}
-
-          {summaryMutation.isError && (
-            <div className="flex items-center gap-2 text-sm text-destructive p-3 rounded-md bg-destructive/10 border border-destructive/20">
-              <AlertTriangle className="size-4 shrink-0" />
-              Failed to generate summary. Please try again.
-            </div>
-          )}
-
-          {summary && (
-            <div className="flex flex-col gap-3 animate-in fade-in duration-300">
-              <div className={cn("flex items-start justify-between gap-4 p-3 rounded-lg border", sevBg)}>
-                <p className="text-sm font-semibold text-foreground leading-relaxed">{summary.headline}</p>
-                <Badge variant="outline" className={cn("shrink-0 font-bold border text-xs", sevColor)}>
-                  {sev}
-                </Badge>
-              </div>
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <ListChecks className="size-3.5 text-primary" />
-                    <span className="text-xs font-semibold text-foreground">Key Findings</span>
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 10 }}
+            transition={{ duration: 0.2 }}
+            className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-lg shadow-2xl relative"
+          >
+            <button 
+              onClick={onClose}
+              className="absolute right-4 top-4 z-10 flex items-center justify-center size-8 rounded-full bg-muted/50 hover:bg-muted text-foreground transition-colors"
+            >
+              <X className="size-4" />
+            </button>
+            <Card className="border-border shadow-sm m-0 rounded-none sm:rounded-lg">
+              <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border py-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-primary/10">
+                    <Sparkles className="size-4 text-primary" />
                   </div>
-                  <ul className="flex flex-col gap-1">
-                    {summary.key_findings?.map((f, i) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
-                  <div className="flex items-center gap-1.5 mb-2">
-                    <TrendingDown className="size-3.5 text-primary" />
-                    <span className="text-xs font-semibold text-primary">Recommended Actions</span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base font-bold">AI Summary for this Run</CardTitle>
+                    </div>
+                    <CardDescription className="text-xs">On-demand analysis of all discrepancies</CardDescription>
                   </div>
-                  <ol className="flex flex-col gap-1">
-                    {summary.recommended_actions?.map((a, i) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <span className="shrink-0 flex size-4 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-bold mt-0.5">
-                          {i + 1}
-                        </span>
-                        {a}
-                      </li>
-                    ))}
-                  </ol>
                 </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
+                {!summary && (
+                  <Button
+                    onClick={() => summaryMutation.mutate()}
+                    disabled={summaryMutation.isPending}
+                    size="sm"
+                    className="shrink-0 mr-8"
+                  >
+                    {summaryMutation.isPending ? (
+                      <><Loader2 className="mr-2 size-3.5 animate-spin" />Analyzing…</>
+                    ) : (
+                      <><Sparkles className="mr-2 size-3.5" />Generate Summary</>
+                    )}
+                  </Button>
+                )}
+              </CardHeader>
+
+              <CardContent className="pt-4">
+                {summaryMutation.isPending && (
+                  <div className="flex flex-col gap-2.5">
+                    <Skeleton className="h-3.5 w-3/4" />
+                    <Skeleton className="h-3.5 w-1/2" />
+                    <Skeleton className="h-3.5 w-5/6" />
+                  </div>
+                )}
+
+                {summaryMutation.isError && (
+                  <div className="flex items-center gap-2 text-sm text-destructive p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                    <AlertTriangle className="size-4 shrink-0" />
+                    Failed to generate summary. Please try again.
+                  </div>
+                )}
+
+                {summary && (
+                  <div className="flex flex-col gap-3 animate-in fade-in duration-300">
+                    <div className={cn("flex items-start justify-between gap-4 p-3 rounded-lg border", sevBg)}>
+                      <p className="text-sm font-semibold text-foreground leading-relaxed">{summary.headline}</p>
+                      <Badge variant="outline" className={cn("shrink-0 font-bold border text-xs", sevColor)}>
+                        {sev}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                      <div className="p-3 rounded-lg bg-muted/30 border border-border">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <ListChecks className="size-3.5 text-primary" />
+                          <span className="text-xs font-semibold text-foreground">Key Findings</span>
+                        </div>
+                        <ul className="flex flex-col gap-1">
+                          {summary.key_findings?.map((f, i) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                              <span className="mt-1.5 size-1.5 rounded-full bg-primary shrink-0" />
+                              {f}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <TrendingDown className="size-3.5 text-primary" />
+                          <span className="text-xs font-semibold text-primary">Recommended Actions</span>
+                        </div>
+                        <ol className="flex flex-col gap-1">
+                          {summary.recommended_actions?.map((a, i) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
+                              <span className="shrink-0 flex size-4 items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-bold mt-0.5">
+                                {i + 1}
+                              </span>
+                              {a}
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
       )}
-    </Card>
+    </AnimatePresence>
   )
 }
 
@@ -234,9 +241,9 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
 
   const sev = row.severity
   const sevBanner = sev === 'HIGH'
-    ? 'bg-destructive/20 border-destructive/50 text-destructive shadow-sm'
+    ? 'bg-red-500/20 border-red-500/50 text-red-500 shadow-sm'
     : sev === 'MEDIUM'
-    ? 'bg-amber-500/20 border-amber-500/50 text-amber-500 shadow-sm'
+    ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-500 shadow-sm'
     : 'bg-green-500/20 border-green-500/50 text-green-500 shadow-sm'
   const sevLabel = sev === 'HIGH' ? 'High Severity' : sev === 'MEDIUM' ? 'Medium Severity' : 'Low Severity'
 
@@ -453,6 +460,7 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
 export default function RunsPage() {
   const { api } = useApi()
   const [activeSessionId, setActiveSessionId] = useState(null)
+  const [showAiModal, setShowAiModal] = useState(false)
   const [selectedRow, setSelectedRow] = useState(null)
 
   const [page, setPage] = useState(1)
@@ -625,7 +633,7 @@ export default function RunsPage() {
                 <CardDescription>Detailed breakdown of mismatches and data quality issues.</CardDescription>
               </div>
 
-              <div className="flex items-center gap-3 ml-auto">
+              <div className="flex items-center gap-3 ml-auto flex-wrap">
                 <div className="relative w-full sm:w-[280px]">
                   <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
                   <Input
@@ -696,8 +704,18 @@ export default function RunsPage() {
           </CardHeader>
 
           <CardContent className="p-4 sm:p-6">
-            {/* Per-run AI Summary */}
-            <RunAiSummary sessionId={activeSessionId} />
+            <div className="flex justify-end mb-4">
+              <div className="relative group">
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-blue-500 rounded-md blur opacity-30 group-hover:opacity-80 transition duration-500 group-hover:duration-200 animate-pulse"></div>
+                <Button 
+                  onClick={() => setShowAiModal(true)}
+                  className="relative bg-card text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground hover:border-transparent shadow-sm transition-all duration-300 h-10"
+                >
+                  <Sparkles className="size-4 mr-2 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110" />
+                  AI Summary
+                </Button>
+              </div>
+            </div>
 
             <div className="rounded-md border-2 border-border/80 overflow-hidden shadow-md">
               <Table>
@@ -790,6 +808,13 @@ export default function RunsPage() {
           )}
         </Card>
       )}
+
+      {/* ── AI Summary Modal ─────────────────────────────────────── */}
+      <RunAiSummaryModal 
+        sessionId={activeSessionId} 
+        isOpen={showAiModal} 
+        onClose={() => setShowAiModal(false)} 
+      />
 
       {/* ── Discrepancy Detail Sheet ───────────────────────────────── */}
       <Sheet open={!!selectedRow} onOpenChange={(open) => !open && setSelectedRow(null)}>
