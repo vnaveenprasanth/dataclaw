@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useApi } from '@/lib/api'
+import { useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Search,
@@ -459,6 +460,7 @@ function DiscrepancySheet({ row, onClose, explainMutation }) {
 
 export default function RunsPage() {
   const { api } = useApi()
+  const location = useLocation()
   const [activeSessionId, setActiveSessionId] = useState(null)
   const [showAiModal, setShowAiModal] = useState(false)
   const [selectedRow, setSelectedRow] = useState(null)
@@ -467,8 +469,17 @@ export default function RunsPage() {
   const [perPage, setPerPage] = useState(10)
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [severityFilter, setSeverityFilter] = useState('')
-  const [typeFilter, setTypeFilter] = useState('')
+  const [severityFilter, setSeverityFilter] = useState(()  => location.state?.severityFilter || '')
+  const [typeFilter, setTypeFilter] = useState(() => location.state?.typeFilter || '')
+
+  // Deep-link from Dashboard: pre-select session + filters from navigation state
+  useEffect(() => {
+    if (location.state?.sessionId) {
+      setActiveSessionId(location.state.sessionId)
+    }
+    // Clear state so navigating away and back doesn't re-apply filters
+    window.history.replaceState({}, '')
+  }, [])
 
   // Debounce search
   useEffect(() => {

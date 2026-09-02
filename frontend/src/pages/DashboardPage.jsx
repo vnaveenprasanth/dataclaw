@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   AlertTriangle, CheckCircle2, DollarSign, FileText,
   ArrowRight, Activity, Scale, ShieldAlert, Sparkles, Loader2,
-  TrendingDown, ListChecks, Zap, X
+  TrendingDown, ListChecks, Zap, X, ExternalLink
 } from 'lucide-react'
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription
@@ -14,6 +14,9 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+} from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 
 // Chart.js imports
@@ -276,6 +279,118 @@ function AiSummaryModal({ sessionId, isOpen, onClose }) {
         </div>
       )}
     </AnimatePresence>
+  )
+}
+
+const TYPE_LABELS_SHORT = {
+  AMOUNT_MISMATCH:         'Amount Mismatch',
+  CURRENCY_MISMATCH:       'Currency Mismatch',
+  DUPLICATE_PAYMENT:       'Duplicate Payment',
+  PHANTOM_PAYMENT:         'Phantom Payment',
+  MISSING_PAYMENT:         'Missing Payment',
+  FAILED_PAYMENT:          'Failed Payment',
+  CANCELLED_ORDER_CHARGED: 'Cancelled & Charged',
+  PARTIAL_REFUND:          'Partial Refund',
+  UNEXPECTED_REFUND:       'Unexpected Refund',
+  DUPLICATE_ORDER:         'Duplicate Order',
+  DATA_QUALITY:            'Data Quality',
+}
+
+function SeverityDot({ severity }) {
+  const dotColor = severity === 'HIGH' ? 'bg-red-500' : severity === 'MEDIUM' ? 'bg-yellow-500' : 'bg-green-500'
+  const textColor = severity === 'HIGH' ? 'text-red-500' : severity === 'MEDIUM' ? 'text-yellow-500' : 'text-green-500'
+  const pillBg = severity === 'HIGH' ? 'bg-red-500/10 border-red-500/20' : severity === 'MEDIUM' ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-green-500/10 border-green-500/20'
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm border text-[11px] font-bold uppercase tracking-wide', pillBg, textColor)}>
+      <span className={cn('size-1.5 rounded-full shrink-0', dotColor)} />
+      {severity}
+    </span>
+  )
+}
+
+// Aggregate table: one row per discrepancy type
+function DiscrepancyBreakdownTable({ typeBreakdown, onTypeClick, isLoading }) {
+  const dominantSev = (sevs = {}) => {
+    if (sevs.HIGH) return 'HIGH'
+    if (sevs.MEDIUM) return 'MEDIUM'
+    return 'LOW'
+  }
+
+  return (
+    <Card className="border-border shadow-sm">
+      <CardHeader className="pb-3 border-b border-border">
+        <CardTitle className="text-sm uppercase tracking-wider font-bold flex items-center gap-2">
+          <AlertTriangle className="size-4 text-amber-500" />
+          Discrepancy Breakdown
+        </CardTitle>
+        <CardDescription className="text-xs mt-0.5">
+          Cumulative totals by type — click any row to drill into the Runs page
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-4 sm:p-6 pt-0">
+        <div className="rounded-md border-2 border-border/80 overflow-hidden shadow-md">
+          <Table>
+            <TableHeader className="bg-muted/50 uppercase text-xs font-bold tracking-wider">
+              <TableRow>
+                <TableHead className="w-[20%]">Severity</TableHead>
+                <TableHead className="w-[35%]">Discrepancy Type</TableHead>
+                <TableHead className="text-center w-[15%]">Count</TableHead>
+                <TableHead className="text-right w-[20%]">Total Risk</TableHead>
+                <TableHead className="text-right w-[10%]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-6 w-24 rounded-sm" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-8 rounded-full mx-auto" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                ))
+              ) : typeBreakdown.map(([type, data]) => {
+              const sev = dominantSev(data.severities)
+              const dotColor = sev === 'HIGH' ? 'bg-red-500' : sev === 'MEDIUM' ? 'bg-yellow-500' : 'bg-green-500'
+              const textColor = sev === 'HIGH' ? 'text-red-500' : sev === 'MEDIUM' ? 'text-yellow-500' : 'text-green-500'
+              const pillBg = sev === 'HIGH' ? 'bg-red-500/10 border-red-500/20' : sev === 'MEDIUM' ? 'bg-yellow-500/10 border-yellow-500/20' : 'bg-green-500/10 border-green-500/20'
+              return (
+                <TableRow
+                  key={type}
+                  className="cursor-pointer hover:bg-muted/40 transition-colors group"
+                  onClick={() => onTypeClick(type)}
+                >
+                  <TableCell>
+                    <span className={cn('inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm border text-[11px] font-bold uppercase tracking-wide', pillBg, textColor)}>
+                      <span className={cn('size-1.5 rounded-full shrink-0', dotColor)} />
+                      {sev}
+                    </span>
+                  </TableCell>
+                  <TableCell className="font-medium text-sm text-foreground">
+                    {TYPE_LABELS_SHORT[type] || type}
+                  </TableCell>
+                  <TableCell className="text-center tabular-nums">
+                    <span className="inline-flex items-center justify-center size-6 rounded-full bg-muted text-xs font-bold text-foreground">
+                      {data.count}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right font-semibold tabular-nums text-foreground">
+                    ${(data.total_risk || 0).toFixed(2)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span className="inline-flex items-center justify-end gap-1 text-xs text-primary font-medium hover:underline cursor-pointer">
+                      View <ExternalLink className="size-3" />
+                    </span>
+                  </TableCell>
+                </TableRow>
+              )
+            })}
+          </TableBody>
+        </Table>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -542,6 +657,22 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Aggregate Discrepancy Breakdown Table */}
+      {(typeBreakdown.length > 0 || summaryLoading) && (
+        <DiscrepancyBreakdownTable
+          isLoading={summaryLoading}
+          typeBreakdown={typeBreakdown}
+          onTypeClick={(type) => {
+            navigate('/runs', {
+              state: {
+                sessionId: latestSession.id,
+                typeFilter: type,
+              }
+            })
+          }}
+        />
+      )}
 
       {/* AI Modal */}
       <AiSummaryModal 

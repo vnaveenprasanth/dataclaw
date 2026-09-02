@@ -27,7 +27,7 @@ const navItems = [
 
 const PAGE_TITLES = {
   '/dashboard': 'Dashboard',
-  '/runs': 'Reconciliation Runs',
+  '/runs': 'Runs',
   '/upload': 'Upload Data',
 }
 
