@@ -116,7 +116,7 @@ const TYPE_LABELS = {
 
 const SEVERITY_COLORS = { HIGH: 'destructive', MEDIUM: 'warning', LOW: 'secondary' }
 
-function AiSummaryCard({ sessionId }) {
+function AiSummaryCard({ sessionId, onClose }) {
   const { api } = useApi()
   const [summary, setSummary] = useState(null)
 
@@ -155,20 +155,30 @@ function AiSummaryCard({ sessionId }) {
             <CardDescription className="text-xs">LLM-generated overview of this reconciliation run</CardDescription>
           </div>
         </div>
-        {!summary && (
-          <Button
-            onClick={() => summaryMutation.mutate()}
-            disabled={summaryMutation.isPending}
-            size="sm"
-            className="shrink-0"
-          >
-            {summaryMutation.isPending ? (
-              <><Loader2 className="mr-2 size-3.5 animate-spin" />Analyzing…</>
-            ) : (
-              <><Sparkles className="mr-2 size-3.5" />Generate Summary</>
-            )}
-          </Button>
-        )}
+        <div className="flex items-center gap-3">
+          {!summary && (
+            <Button
+              onClick={() => summaryMutation.mutate()}
+              disabled={summaryMutation.isPending}
+              size="sm"
+              className="shrink-0"
+            >
+              {summaryMutation.isPending ? (
+                <><Loader2 className="mr-2 size-3.5 animate-spin" />Analyzing…</>
+              ) : (
+                <><Sparkles className="mr-2 size-3.5" />Generate Summary</>
+              )}
+            </Button>
+          )}
+          {onClose && (
+            <button 
+              onClick={onClose}
+              className="flex items-center justify-center size-8 rounded-full bg-muted/50 hover:bg-muted text-foreground transition-colors shrink-0"
+            >
+              <X className="size-4" />
+            </button>
+          )}
+        </div>
       </CardHeader>
 
       <CardContent className="pt-4">
@@ -266,14 +276,8 @@ function AiSummaryModal({ sessionId, isOpen, onClose }) {
             transition={{ duration: 0.2 }}
             className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-lg shadow-2xl"
           >
-            <div className="relative">
-              <button 
-                onClick={onClose}
-                className="absolute right-4 top-4 z-10 flex items-center justify-center size-8 rounded-full bg-muted/50 hover:bg-muted text-foreground transition-colors"
-              >
-                <X className="size-4" />
-              </button>
-              <AiSummaryCard sessionId={sessionId} />
+            <div className="relative shadow-2xl rounded-lg overflow-hidden">
+              <AiSummaryCard sessionId={sessionId} onClose={onClose} />
             </div>
           </motion.div>
         </div>
@@ -398,8 +402,9 @@ export default function DashboardPage() {
   const { api } = useApi()
   const navigate = useNavigate()
   const [showAiModal, setShowAiModal] = useState(false)
+  const [selectedSessionId, setSelectedSessionId] = useState(null)
 
-  // Get latest session
+  // Get all sessions
   const { data: sessions, isLoading: sessionsLoading } = useQuery({
     queryKey: ['sessions'],
     queryFn: async () => {
@@ -408,20 +413,27 @@ export default function DashboardPage() {
     },
   })
 
-  const latestSession = sessions?.[0]
+  // Auto-select latest session on first load
+  useEffect(() => {
+    if (sessions?.length && !selectedSessionId) {
+      setSelectedSessionId(sessions[0].id)
+    }
+  }, [sessions])
+
+  const selectedSession = sessions?.find(s => s.id === selectedSessionId) || sessions?.[0]
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
-    queryKey: ['summary', latestSession?.id],
+    queryKey: ['summary', selectedSession?.id],
     queryFn: async () => {
-      const { data } = await api.get(`/sessions/${latestSession.id}/summary`)
+      const { data } = await api.get(`/sessions/${selectedSession.id}/summary`)
       return data
     },
-    enabled: !!latestSession,
+    enabled: !!selectedSession,
   })
 
   const loading = sessionsLoading || summaryLoading
 
-  if (!loading && !latestSession) {
+  if (!loading && !selectedSession) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 p-8 text-center">
         <div className="flex size-16 items-center justify-center rounded-full bg-muted shadow-inner">
@@ -542,23 +554,44 @@ export default function DashboardPage() {
             {loading ? 'Loading session details...' : (
               <>
                 <Activity className="size-3.5" />
-                Showing Latest Run (Session #{latestSession?.id}) · Processed {new Date(latestSession?.uploaded_at).toLocaleDateString()}
+                Session #{selectedSession?.id} &middot; Processed {new Date(selectedSession?.uploaded_at).toLocaleDateString()}
               </>
             )}
           </p>
         </div>
-        {latestSession && !loading && (
-          <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-blue-500 rounded-md blur opacity-30 group-hover:opacity-80 transition duration-500 group-hover:duration-200 animate-pulse"></div>
-            <Button 
-              onClick={() => setShowAiModal(true)}
-              className="relative bg-card text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground hover:border-transparent shadow-sm transition-all duration-300"
-            >
-              <Sparkles className="size-4 mr-2 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110" />
-              View AI Summary
-            </Button>
-          </div>
-        )}
+        {/* Right controls: Run Selector + AI Summary */}
+        <div className="flex items-center gap-3">
+          {/* Run selector dropdown */}
+          {sessions && sessions.length > 1 && (
+            <div className="relative">
+              <select
+                className="h-9 w-[200px] appearance-none rounded-md border border-input bg-background px-3 pr-8 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-foreground cursor-pointer"
+                value={selectedSessionId || ''}
+                onChange={(e) => setSelectedSessionId(Number(e.target.value))}
+              >
+                {sessions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    Run #{s.id} &mdash; {new Date(s.uploaded_at).toLocaleDateString()}
+                  </option>
+                ))}
+              </select>
+              <ArrowRight className="pointer-events-none absolute right-2.5 top-2.5 size-3.5 rotate-90 text-muted-foreground" />
+            </div>
+          )}
+          {/* AI Summary */}
+          {selectedSession && !loading && (
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-primary to-blue-500 rounded-md blur opacity-30 group-hover:opacity-80 transition duration-500 group-hover:duration-200 animate-pulse"></div>
+              <Button
+                onClick={() => setShowAiModal(true)}
+                className="relative bg-card text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground hover:border-transparent shadow-sm transition-all duration-300"
+              >
+                <Sparkles className="size-4 mr-2 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110" />
+                View AI Summary
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* KPI Cards — 6 columns on XL */}
@@ -607,9 +640,9 @@ export default function DashboardPage() {
         <Card className="bg-card border-border lg:col-span-2 flex flex-col shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm uppercase tracking-wider font-bold">Risk by Discrepancy Type</CardTitle>
-            {latestSession && summary?.total_discrepancies > 0 && (
+            {selectedSession && summary?.total_discrepancies > 0 && (
               <button
-                onClick={() => navigate(`/runs`)}
+                onClick={() => navigate('/runs', { state: { sessionId: selectedSession.id } })}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors bg-primary/10 px-3 py-1.5 rounded-full"
               >
                 View Details <ArrowRight className="size-3" />
@@ -666,7 +699,7 @@ export default function DashboardPage() {
           onTypeClick={(type) => {
             navigate('/runs', {
               state: {
-                sessionId: latestSession.id,
+                sessionId: selectedSession?.id,
                 typeFilter: type,
               }
             })
@@ -676,7 +709,7 @@ export default function DashboardPage() {
 
       {/* AI Modal */}
       <AiSummaryModal 
-        sessionId={latestSession?.id} 
+        sessionId={selectedSession?.id} 
         isOpen={showAiModal} 
         onClose={() => setShowAiModal(false)} 
       />
